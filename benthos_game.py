@@ -58,13 +58,15 @@ pygame.init()
 infoObject = pygame.display.Info()
 SCREEN_WIDTH = infoObject.current_w
 SCREEN_HEIGHT = infoObject.current_h
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+screen = pygame.display.set_mode(
+    (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Il Fondale Misterioso - Sharper Night 2026")
 
 INITIAL_SCREEN_WIDTH = 2400
 INITIAL_SCREEN_HEIGHT = 1200
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+print(BASE_DIR)
 
 # --- Colors ---
 BLACK = (20, 20, 20)
@@ -96,12 +98,18 @@ leaderboard = []
 # =====================================================================
 
 AVATARS = [
-    {"id": "riccio_avatar", "name": "Riccio", "icon": "placeholder/avatars/avatar_riccio.png"},
-    {"id": "polpo_avatar", "name": "Polpo", "icon": "placeholder/avatars/avatar_polpo.png"},
-    {"id": "stella_avatar", "name": "Stella", "icon": "placeholder/avatars/avatar_stella.png"},
-    {"id": "granchio_avatar", "name": "Granchio", "icon": "placeholder/avatars/avatar_granchio.png"},
-    {"id": "nudibranco_avatar", "name": "Nudibranco", "icon": "placeholder/avatars/avatar_nudibranco.png"},
-    {"id": "cavalluccio_avatar", "name": "Cavalluccio", "icon": "placeholder/avatars/avatar_cavalluccio.png"},
+    {"id": "riccio_avatar", "name": "Riccio",
+        "icon": "placeholder/avatars/avatar_riccio.png"},
+    {"id": "polpo_avatar", "name": "Polpo",
+        "icon": "placeholder/avatars/avatar_polpo.png"},
+    {"id": "stella_avatar", "name": "Stella",
+        "icon": "placeholder/avatars/avatar_stella.png"},
+    {"id": "granchio_avatar", "name": "Granchio",
+        "icon": "placeholder/avatars/avatar_granchio.png"},
+    {"id": "nudibranco_avatar", "name": "Nudibranco",
+        "icon": "placeholder/avatars/avatar_nudibranco.png"},
+    {"id": "cavalluccio_avatar", "name": "Cavalluccio",
+        "icon": "placeholder/avatars/avatar_cavalluccio.png"},
 ]
 
 # Six unique animal <-> habitat pairs (used by Level 1 and Level 2)
@@ -193,7 +201,8 @@ def make_fallback_surface(size, label):
     color = _fallback_color(label)
     radius = max(4, int(min(w, h) * 0.15))
     pygame.draw.rect(surf, color, (0, 0, w, h), border_radius=radius)
-    pygame.draw.rect(surf, WHITE, (0, 0, w, h), max(2, int(min(w, h) * 0.02)), border_radius=radius)
+    pygame.draw.rect(surf, WHITE, (0, 0, w, h), max(
+        2, int(min(w, h) * 0.02)), border_radius=radius)
     font_size = max(10, int(min(w, h) * 0.32))
     f = pygame.font.Font(None, font_size)
     words = [wd for wd in label.split() if wd]
@@ -235,7 +244,8 @@ def initialize_fonts():
     global scale_ratio, title_font, subtitle_font, status_font, card_font
     global label_font, leaderboard_font, message_font, button_font, quiz_font, option_font, small_font
 
-    scale_ratio = min(SCREEN_WIDTH / INITIAL_SCREEN_WIDTH, SCREEN_HEIGHT / INITIAL_SCREEN_HEIGHT)
+    scale_ratio = min(SCREEN_WIDTH / INITIAL_SCREEN_WIDTH,
+                      SCREEN_HEIGHT / INITIAL_SCREEN_HEIGHT)
     scale_ratio = max(scale_ratio, 0.3)
 
     title_font = pygame.font.Font(None, int(100 * scale_ratio))
@@ -283,7 +293,8 @@ def draw_button(rect, text, font=None, enabled=True, base_color=None):
 
 
 def draw_background():
-    bg = get_scaled("placeholder/backgrounds/sfondo.png", (SCREEN_WIDTH, SCREEN_HEIGHT), "Sfondo")
+    bg = get_scaled("placeholder/backgrounds/sfondo.png",
+                    (SCREEN_WIDTH, SCREEN_HEIGHT), "Sfondo")
     # If it's a real background image it will fill nicely; if it's the
     # fallback colored box, draw a simple sea gradient instead (nicer default).
     if load_original("placeholder/backgrounds/sfondo.png") is not None:
@@ -291,19 +302,26 @@ def draw_background():
     else:
         for y in range(0, SCREEN_HEIGHT, 4):
             t = y / max(1, SCREEN_HEIGHT)
-            r = int(SEA_BLUE_DARK[0] + (SEA_BLUE_LIGHT[0] - SEA_BLUE_DARK[0]) * t)
-            g = int(SEA_BLUE_DARK[1] + (SEA_BLUE_LIGHT[1] - SEA_BLUE_DARK[1]) * t)
-            b = int(SEA_BLUE_DARK[2] + (SEA_BLUE_LIGHT[2] - SEA_BLUE_DARK[2]) * t)
+            r = int(SEA_BLUE_DARK[0] +
+                    (SEA_BLUE_LIGHT[0] - SEA_BLUE_DARK[0]) * t)
+            g = int(SEA_BLUE_DARK[1] +
+                    (SEA_BLUE_LIGHT[1] - SEA_BLUE_DARK[1]) * t)
+            b = int(SEA_BLUE_DARK[2] +
+                    (SEA_BLUE_LIGHT[2] - SEA_BLUE_DARK[2]) * t)
             pygame.draw.rect(screen, (r, g, b), (0, y, SCREEN_WIDTH, 4))
 
 
 def draw_header(level_label=""):
-    draw_text("Il Fondale Misterioso", title_font, WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.07)
-    draw_text("Sharper Night 2026 - CNR", subtitle_font, SUBTITLE_COLOR, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.13)
+    draw_text("Il Fondale Misterioso", title_font, WHITE,
+              SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.07)
+    draw_text("Sharper Night 2026 - CNR", subtitle_font,
+              SUBTITLE_COLOR, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.13)
     if player_name:
-        draw_text(f"{player_name}", small_font, WHITE, SCREEN_WIDTH * 0.03, SCREEN_HEIGHT * 0.04, align="left")
+        draw_text(f"{player_name}", small_font, WHITE,
+                  SCREEN_WIDTH * 0.03, SCREEN_HEIGHT * 0.04, align="left")
     if level_label:
-        draw_text(level_label, status_font, WHITE, SCREEN_WIDTH * 0.92, SCREEN_HEIGHT * 0.07)
+        draw_text(level_label, status_font, WHITE,
+                  SCREEN_WIDTH * 0.92, SCREEN_HEIGHT * 0.07)
 
 
 # =====================================================================
@@ -330,7 +348,8 @@ def save_leaderboard():
 
 
 def get_player_rank(username, final_score):
-    sorted_lb = sorted(leaderboard, key=lambda x: x.get("final_score", 0), reverse=True)
+    sorted_lb = sorted(leaderboard, key=lambda x: x.get(
+        "final_score", 0), reverse=True)
     for i, entry in enumerate(sorted_lb):
         if entry["username"] == username and entry["final_score"] == final_score:
             return i + 1
@@ -339,13 +358,16 @@ def get_player_rank(username, final_score):
 
 def draw_leaderboard_box(rect):
     draw_panel(rect)
-    draw_text("Classifica:", status_font, WHITE, rect.centerx, rect.top + 35 * scale_ratio)
-    sorted_lb = sorted(leaderboard, key=lambda x: x.get("final_score", 0), reverse=True)
+    draw_text("Classifica:", status_font, WHITE,
+              rect.centerx, rect.top + 35 * scale_ratio)
+    sorted_lb = sorted(leaderboard, key=lambda x: x.get(
+        "final_score", 0), reverse=True)
     y_offset = rect.top + 90 * scale_ratio
     for i, entry in enumerate(sorted_lb[:5]):
         t = entry.get("time", "N/A")
         text = f"{i + 1}. {entry['username']} - {t}s"
-        draw_text(text, leaderboard_font, WHITE, rect.left + 25 * scale_ratio, y_offset, align="left")
+        draw_text(text, leaderboard_font, WHITE, rect.left +
+                  25 * scale_ratio, y_offset, align="left")
         y_offset += 46 * scale_ratio
 
 
@@ -360,7 +382,8 @@ PARTICLE_ICON_PATHS = [p["animal_icon"] for p in PAIRS]
 class BenthosParticle:
     def __init__(self, x, y, size):
         self.image_path = random.choice(PARTICLE_ICON_PATHS)
-        label = next((p["animal_name"] for p in PAIRS if p["animal_icon"] == self.image_path), "")
+        label = next((p["animal_name"]
+                     for p in PAIRS if p["animal_icon"] == self.image_path), "")
         self.image = get_scaled(self.image_path, (size, size), label)
         self.rect = self.image.get_rect(center=(x, y))
         self.x = float(x)
@@ -472,7 +495,7 @@ def update_layout():
             r = i // cols
             c = i % cols
             rect = pygame.Rect(grid_x + c * (card_size + margin), grid_y + r * (card_size + margin),
-                                card_size, card_size)
+                               card_size, card_size)
             rects.append(rect)
         LAYOUT["avatar_rects"] = rects
         LAYOUT["avatar_size"] = card_size
@@ -480,14 +503,15 @@ def update_layout():
         box_w = int(SCREEN_WIDTH * 0.28)
         box_h = int(70 * scale_ratio)
         LAYOUT["name_box"] = pygame.Rect(SCREEN_WIDTH / 2 - box_w / 2, grid_y + grid_h + int(60 * scale_ratio),
-                                          box_w, box_h)
+                                         box_w, box_h)
         btn_w, btn_h = int(280 * scale_ratio), int(80 * scale_ratio)
         LAYOUT["start_btn"] = pygame.Rect(SCREEN_WIDTH / 2 - btn_w / 2,
-                                           LAYOUT["name_box"].bottom + int(40 * scale_ratio), btn_w, btn_h)
+                                          LAYOUT["name_box"].bottom + int(40 * scale_ratio), btn_w, btn_h)
 
     elif STATE in ("L1_INTRO", "L2_INTRO", "L3_INTRO"):
         btn_w, btn_h = int(320 * scale_ratio), int(90 * scale_ratio)
-        LAYOUT["continue_btn"] = pygame.Rect(SCREEN_WIDTH / 2 - btn_w / 2, SCREEN_HEIGHT * 0.78, btn_w, btn_h)
+        LAYOUT["continue_btn"] = pygame.Rect(
+            SCREEN_WIDTH / 2 - btn_w / 2, SCREEN_HEIGHT * 0.78, btn_w, btn_h)
 
     elif STATE in ("L1_REVEAL", "L1_PLAY"):
         card_size = int(300 * scale_ratio)
@@ -505,8 +529,8 @@ def update_layout():
         for i, row in enumerate(game_board):
             for j, card in enumerate(row):
                 card["rect"] = pygame.Rect(grid_x + j * (card_size + margin),
-                                            grid_y_top if i == 0 else grid_y_bottom,
-                                            card_size, card_size)
+                                           grid_y_top if i == 0 else grid_y_bottom,
+                                           card_size, card_size)
 
     elif STATE == "L2_PLAY":
         zone_size = int(260 * scale_ratio)
@@ -516,16 +540,19 @@ def update_layout():
         start_x = (SCREEN_WIDTH - total_w) / 2
         zone_y = SCREEN_HEIGHT * 0.28
         for i, zone in enumerate(habitat_zones):
-            zone["rect"] = pygame.Rect(start_x + i * (zone_size + margin), zone_y, zone_size, zone_size)
+            zone["rect"] = pygame.Rect(
+                start_x + i * (zone_size + margin), zone_y, zone_size, zone_size)
         LAYOUT["zone_size"] = zone_size
 
         item_size = int(170 * scale_ratio)
         item_margin = int(30 * scale_ratio)
-        total_iw = len(drag_items) * item_size + (len(drag_items) - 1) * item_margin
+        total_iw = len(drag_items) * item_size + \
+            (len(drag_items) - 1) * item_margin
         start_ix = (SCREEN_WIDTH - total_iw) / 2
         item_y = SCREEN_HEIGHT * 0.72
         for i, item in enumerate(drag_items):
-            home = pygame.Rect(start_ix + i * (item_size + item_margin), item_y, item_size, item_size)
+            home = pygame.Rect(start_ix + i * (item_size +
+                               item_margin), item_y, item_size, item_size)
             item["home_rect"] = home
             if not item["placed"] and not item.get("dragging"):
                 item["rect"] = home.copy()
@@ -534,14 +561,15 @@ def update_layout():
     elif STATE == "L3_PLAY":
         box_w = SCREEN_WIDTH * 0.7
         LAYOUT["question_rect"] = pygame.Rect(SCREEN_WIDTH / 2 - box_w / 2, SCREEN_HEIGHT * 0.27, box_w,
-                                               int(140 * scale_ratio))
+                                              int(140 * scale_ratio))
         opt_w = box_w
         opt_h = int(100 * scale_ratio)
         opt_gap = int(24 * scale_ratio)
         opt_rects = []
         top = LAYOUT["question_rect"].bottom + int(50 * scale_ratio)
         for i in range(4):
-            r = pygame.Rect(SCREEN_WIDTH / 2 - opt_w / 2, top + i * (opt_h + opt_gap), opt_w, opt_h)
+            r = pygame.Rect(SCREEN_WIDTH / 2 - opt_w / 2, top +
+                            i * (opt_h + opt_gap), opt_w, opt_h)
             opt_rects.append(r)
         LAYOUT["option_rects"] = opt_rects
 
@@ -549,13 +577,14 @@ def update_layout():
         pad = int(20 * scale_ratio)
         lb_w = SCREEN_WIDTH * 0.32
         lb_h = SCREEN_HEIGHT * 0.36
-        LAYOUT["leaderboard_rect"] = pygame.Rect(pad, SCREEN_HEIGHT - lb_h - pad, lb_w, lb_h)
+        LAYOUT["leaderboard_rect"] = pygame.Rect(
+            pad, SCREEN_HEIGHT - lb_h - pad, lb_w, lb_h)
         msg_h = SCREEN_HEIGHT * 0.12
         LAYOUT["message_rect"] = pygame.Rect(pad, LAYOUT["leaderboard_rect"].top - msg_h - int(10 * scale_ratio),
-                                              lb_w, msg_h)
+                                             lb_w, msg_h)
         btn_w, btn_h = int(320 * scale_ratio), int(90 * scale_ratio)
         LAYOUT["play_again_btn"] = pygame.Rect(SCREEN_WIDTH / 2 - btn_w / 2, SCREEN_HEIGHT - btn_h - int(40 * scale_ratio),
-                                                btn_w, btn_h)
+                                               btn_w, btn_h)
 
 
 def change_state(new_state):
@@ -571,9 +600,9 @@ def change_state(new_state):
 def setup_level1():
     global game_board, flipped_cards, matched_pairs_l1, can_flip_l1, is_revealing_l1, level_start_time
     animal_cards = [{"kind": "animal", "pair_id": i, "icon": p["animal_icon"], "label": p["animal_name"],
-                      "is_flipped": False, "is_matched": False} for i, p in enumerate(PAIRS)]
+                     "is_flipped": False, "is_matched": False} for i, p in enumerate(PAIRS)]
     habitat_cards = [{"kind": "habitat", "pair_id": i, "icon": p["habitat_icon"], "label": p["habitat_name"],
-                       "is_flipped": False, "is_matched": False} for i, p in enumerate(PAIRS)]
+                      "is_flipped": False, "is_matched": False} for i, p in enumerate(PAIRS)]
     random.shuffle(animal_cards)
     random.shuffle(habitat_cards)
     game_board = [animal_cards, habitat_cards]
@@ -593,21 +622,25 @@ def draw_level1_board():
             if is_revealing_l1 or card["is_flipped"] or card["is_matched"]:
                 bg = MATCHED_COLOR if card["is_matched"] else BLACK
                 pygame.draw.rect(screen, bg, rect, border_radius=20)
-                pygame.draw.rect(screen, BORDER_COLOR, rect, int(6 * scale_ratio), border_radius=20)
+                pygame.draw.rect(screen, BORDER_COLOR, rect, int(
+                    6 * scale_ratio), border_radius=20)
                 img = get_scaled(card["icon"], (card_size - int(24 * scale_ratio), card_size - int(24 * scale_ratio)),
-                                  card["label"])
+                                 card["label"])
                 img_rect = img.get_rect(center=rect.center)
                 screen.blit(img, img_rect)
             else:
-                pygame.draw.rect(screen, CARD_BACK_COLOR, rect, border_radius=20)
-                pygame.draw.rect(screen, BORDER_COLOR, rect, int(6 * scale_ratio), border_radius=20)
+                pygame.draw.rect(screen, CARD_BACK_COLOR,
+                                 rect, border_radius=20)
+                pygame.draw.rect(screen, BORDER_COLOR, rect, int(
+                    6 * scale_ratio), border_radius=20)
                 q = card_font.render("?", True, WHITE)
                 qrect = q.get_rect(center=rect.center)
                 screen.blit(q, qrect)
 
     bar_h = label_font.get_height() + int(30 * scale_ratio)
     for label, y in (("Animali:", LAYOUT["grid_y_top"]), ("Habitat:", LAYOUT["grid_y_bottom"])):
-        bar_rect = pygame.Rect(LAYOUT["grid_x"], y - bar_h, LAYOUT["grid_width"], bar_h)
+        bar_rect = pygame.Rect(
+            LAYOUT["grid_x"], y - bar_h, LAYOUT["grid_width"], bar_h)
         s = pygame.Surface((bar_rect.width, bar_rect.height), pygame.SRCALPHA)
         s.fill(LABEL_BAR_COLOR)
         screen.blit(s, (bar_rect.x, bar_rect.y))
@@ -636,12 +669,12 @@ def handle_level1_click(pos):
 def setup_level2():
     global habitat_zones, drag_items, matched_pairs_l2, dragging_item, level2_wrong, level_start_time
     zones = [{"id": p["id"], "name": p["habitat_name"], "icon": p["habitat_icon"], "filled": False, "rect": None}
-              for p in PAIRS]
+             for p in PAIRS]
     random.shuffle(zones)
     habitat_zones = zones
 
     items = [{"id": p["id"], "name": p["animal_name"], "icon": p["animal_icon"], "placed": False,
-               "dragging": False, "rect": None, "home_rect": None} for p in PAIRS]
+              "dragging": False, "rect": None, "home_rect": None} for p in PAIRS]
     random.shuffle(items)
     drag_items = items
 
@@ -660,12 +693,15 @@ def draw_level2_board():
         if flash_zone and flash_zone[0] is zone and time.time() < flash_zone[2]:
             color = flash_zone[1]
         pygame.draw.rect(screen, color, rect, border_radius=18)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, int(4 * scale_ratio), border_radius=18)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, int(
+            4 * scale_ratio), border_radius=18)
         icon_size = zone_size - int(70 * scale_ratio)
         img = get_scaled(zone["icon"], (icon_size, icon_size), zone["name"])
-        img_rect = img.get_rect(center=(rect.centerx, rect.centery - int(15 * scale_ratio)))
+        img_rect = img.get_rect(
+            center=(rect.centerx, rect.centery - int(15 * scale_ratio)))
         screen.blit(img, img_rect)
-        draw_text(zone["name"], small_font, WHITE, rect.centerx, rect.bottom - int(20 * scale_ratio))
+        draw_text(zone["name"], small_font, WHITE, rect.centerx,
+                  rect.bottom - int(20 * scale_ratio))
 
     # draw non-dragging items first, dragging item last (always on top)
     top_item = None
@@ -684,8 +720,10 @@ def draw_level2_board():
 def _draw_drag_item(item, item_size):
     rect = item["rect"]
     pygame.draw.rect(screen, CARD_BACK_COLOR, rect, border_radius=16)
-    pygame.draw.rect(screen, BORDER_COLOR, rect, int(4 * scale_ratio), border_radius=16)
-    img = get_scaled(item["icon"], (item_size - int(24 * scale_ratio), item_size - int(24 * scale_ratio)), item["name"])
+    pygame.draw.rect(screen, BORDER_COLOR, rect, int(
+        4 * scale_ratio), border_radius=16)
+    img = get_scaled(item["icon"], (item_size - int(24 * scale_ratio),
+                     item_size - int(24 * scale_ratio)), item["name"])
     img_rect = img.get_rect(center=rect.center)
     screen.blit(img, img_rect)
 
@@ -698,7 +736,8 @@ def handle_level2_mousedown(pos):
         if item["rect"].collidepoint(pos):
             dragging_item = item
             item["dragging"] = True
-            drag_offset = (pos[0] - item["rect"].centerx, pos[1] - item["rect"].centery)
+            drag_offset = (pos[0] - item["rect"].centerx,
+                           pos[1] - item["rect"].centery)
             return
 
 
@@ -771,9 +810,10 @@ def draw_level3():
     qrect = LAYOUT["question_rect"]
     draw_panel(qrect, alpha=160)
     draw_text(f"Domanda {quiz_index + 1}/{len(quiz_set)}", small_font, SUBTITLE_COLOR,
-               qrect.centerx, qrect.top + int(24 * scale_ratio))
+              qrect.centerx, qrect.top + int(24 * scale_ratio))
     # wrap question text simply if long
-    draw_wrapped_text(q["q"], quiz_font, WHITE, qrect, top_offset=int(50 * scale_ratio))
+    draw_wrapped_text(q["q"], quiz_font, WHITE, qrect,
+                      top_offset=int(50 * scale_ratio))
 
     for i, opt_text in enumerate(q["_display_options"]):
         rect = LAYOUT["option_rects"][i]
@@ -784,8 +824,10 @@ def draw_level3():
             elif i == quiz_selected:
                 color = WRONG_COLOR
         pygame.draw.rect(screen, color, rect, border_radius=14)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, int(3 * scale_ratio), border_radius=14)
-        draw_wrapped_text(opt_text, option_font, WHITE, rect, top_offset=0, vcenter=True)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, int(
+            3 * scale_ratio), border_radius=14)
+        draw_wrapped_text(opt_text, option_font, WHITE,
+                          rect, top_offset=0, vcenter=True)
 
 
 def draw_wrapped_text(text, font, color, rect, top_offset=0, vcenter=False, max_width_ratio=0.92):
@@ -852,11 +894,12 @@ player_rank = None
 
 def setup_results():
     global leaderboard, final_score, total_time_display, player_rank
-    total_time = level1_time + level2_time + level3_time + level2_wrong * 5 + level3_wrong * 8
+    total_time = level1_time + level2_time + \
+        level3_time + level2_wrong * 5 + level3_wrong * 8
     total_time_display = round(total_time, 1)
     final_score = 1000000 - total_time
     entry = {"username": player_name, "avatar": AVATARS[selected_avatar_idx]["name"],
-              "final_score": final_score, "time": total_time_display}
+             "final_score": final_score, "time": total_time_display}
     leaderboard = [e for e in leaderboard if e["username"] != player_name]
     leaderboard.append(entry)
     save_leaderboard()
@@ -866,13 +909,16 @@ def setup_results():
 
 
 def draw_results():
-    draw_text("Hai completato il fondale misterioso!", message_font, WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.22)
-    draw_text(f"Tempo totale: {total_time_display}s", status_font, WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.28)
+    draw_text("Hai completato il fondale misterioso!", message_font,
+              WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.22)
+    draw_text(f"Tempo totale: {total_time_display}s", status_font,
+              WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.28)
 
     msg_rect = LAYOUT["message_rect"]
     draw_panel(msg_rect)
     rank_text = f"Posizione in classifica: #{player_rank}" if player_rank else "Posizione in classifica: -"
-    draw_text(rank_text, message_font, WHITE, msg_rect.centerx, msg_rect.centery)
+    draw_text(rank_text, message_font, WHITE,
+              msg_rect.centerx, msg_rect.centery)
 
     draw_leaderboard_box(LAYOUT["leaderboard_rect"])
     draw_button(LAYOUT["play_again_btn"], "Gioca ancora")
@@ -895,19 +941,22 @@ def reset_game():
 
 def draw_avatar_screen():
     draw_text("Scegli il tuo avatar e scrivi il tuo nome", subtitle_font, WHITE, SCREEN_WIDTH / 2,
-               SCREEN_HEIGHT * 0.2)
+              SCREEN_HEIGHT * 0.2)
     for i, av in enumerate(AVATARS):
         rect = LAYOUT["avatar_rects"][i]
         selected = (i == selected_avatar_idx)
         bg_color = SELECTED_COLOR if selected else (35, 65, 95)
         pygame.draw.rect(screen, bg_color, rect, border_radius=18)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, int(4 * scale_ratio), border_radius=18)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, int(
+            4 * scale_ratio), border_radius=18)
         icon_size = LAYOUT["avatar_size"] - int(70 * scale_ratio)
         img = get_scaled(av["icon"], (icon_size, icon_size), av["name"])
-        img_rect = img.get_rect(center=(rect.centerx, rect.centery - int(15 * scale_ratio)))
+        img_rect = img.get_rect(
+            center=(rect.centerx, rect.centery - int(15 * scale_ratio)))
         screen.blit(img, img_rect)
         text_color = BLACK if selected else WHITE
-        draw_text(av["name"], small_font, text_color, rect.centerx, rect.bottom - int(24 * scale_ratio))
+        draw_text(av["name"], small_font, text_color,
+                  rect.centerx, rect.bottom - int(24 * scale_ratio))
 
     box = LAYOUT["name_box"]
     box_color = (255, 255, 255) if name_active else (180, 180, 180)
@@ -958,8 +1007,9 @@ def draw_level_intro():
     title, subtitle = INTRO_TEXTS[STATE]
     draw_text(title, title_font, WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.4)
     draw_wrapped_text(subtitle, status_font, SUBTITLE_COLOR,
-                        pygame.Rect(SCREEN_WIDTH * 0.2, SCREEN_HEIGHT * 0.48, SCREEN_WIDTH * 0.6, SCREEN_HEIGHT * 0.15),
-                        top_offset=0)
+                      pygame.Rect(SCREEN_WIDTH * 0.2, SCREEN_HEIGHT *
+                                  0.48, SCREEN_WIDTH * 0.6, SCREEN_HEIGHT * 0.15),
+                      top_offset=0)
     draw_button(LAYOUT["continue_btn"], "Vai!")
 
 
@@ -995,7 +1045,8 @@ def main():
 
             elif event.type == pygame.VIDEORESIZE:
                 SCREEN_WIDTH, SCREEN_HEIGHT = event.size
-                screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+                screen = pygame.display.set_mode(
+                    (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
                 initialize_fonts()
                 SCALED_CACHE.clear()
                 update_layout()
