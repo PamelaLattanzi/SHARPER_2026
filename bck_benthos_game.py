@@ -17,11 +17,11 @@ manca viene disegnato un riquadro colorato con le iniziali al posto
 suo, quindi e' gia' giocabile/testabile cosi' com'e'. Basta aggiungere
 i file con questi ESATTI nomi e percorsi quando sono pronti):
 
-  placeholder/avatars/avatar_squalo.png
+  placeholder/avatars/avatar_riccio.png
   placeholder/avatars/avatar_polpo.png
   placeholder/avatars/avatar_stella.png
-  placeholder/avatars/avatar_delfino.png
-  placeholder/avatars/avatar_tartaruga.png
+  placeholder/avatars/avatar_granchio.png
+  placeholder/avatars/avatar_nudibranco.png
   placeholder/avatars/avatar_cavalluccio.png
 
   placeholder/animals/riccio.png
@@ -98,16 +98,16 @@ leaderboard = []
 # =====================================================================
 
 AVATARS = [
-    {"id": "squalo_avatar", "name": "Squalo",
-        "icon": "placeholder/avatars/avatar_squalo.png"},
+    {"id": "riccio_avatar", "name": "Riccio",
+        "icon": "placeholder/avatars/avatar_riccio.png"},
     {"id": "polpo_avatar", "name": "Polpo",
         "icon": "placeholder/avatars/avatar_polpo.png"},
     {"id": "stella_avatar", "name": "Stella",
         "icon": "placeholder/avatars/avatar_stella.png"},
-    {"id": "delfino_avatar", "name": "Delfino",
-        "icon": "placeholder/avatars/avatar_delfino.png"},
-    {"id": "tartaruga_avatar", "name": "tartaruga",
-        "icon": "placeholder/avatars/avatar_tartaruga.png"},
+    {"id": "granchio_avatar", "name": "Granchio",
+        "icon": "placeholder/avatars/avatar_granchio.png"},
+    {"id": "nudibranco_avatar", "name": "Nudibranco",
+        "icon": "placeholder/avatars/avatar_nudibranco.png"},
     {"id": "cavalluccio_avatar", "name": "Cavalluccio",
         "icon": "placeholder/avatars/avatar_cavalluccio.png"},
 ]
@@ -128,7 +128,6 @@ PAIRS = [
      "habitat_name": "Pozze di marea", "habitat_icon": "placeholder/habitats/pozze_di_marea.png"},
 ]
 
-'''
 QUIZ_QUESTIONS = [
     {"q": "Cosa significa 'benthos'?",
      "options": ["Organismi che vivono sul o nel fondale marino",
@@ -162,25 +161,6 @@ QUIZ_QUESTIONS = [
      "options": ["Monitorare la biodiversita' e la salute degli ecosistemi",
                  "Costruire porti turistici", "Vendere pesce", "Organizzare regate"], "correct": 0},
 ]
-'''
-
-QUIZ_FILE = os.path.join(BASE_DIR, "questions_level3.json")
-
-
-def load_quiz_questions():
-    if os.path.exists(QUIZ_FILE):
-        try:
-            with open(QUIZ_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict) and "easy" in data and "difficult" in data:
-                    return data
-        except Exception as e:
-            print(f"Errore caricamento quiz JSON: {e}")
-    # Fallback di sicurezza
-    return {
-        "easy": [{"q": "Lo squalo balena è uno squalo o una balena?", "options": ["Squalo", "Balena"], "correct": 0}],
-        "difficult": [{"q": "Che cos’è l’ecosistema?", "options": ["L'acqua", "Il sistema ecologico", "L'insieme di organismi viventi e non viventi che interagiscono tra di loro e con l'ambiente"], "correct": 2}]
-    }
 
 # =====================================================================
 # IMAGE LOADING WITH GRACEFUL FALLBACK
@@ -188,7 +168,6 @@ def load_quiz_questions():
 #  initials; once real PNGs are added at the paths above, they are used
 #  automatically without any code change)
 # =====================================================================
-
 
 ORIGINAL_IMAGES = {}
 SCALED_CACHE = {}
@@ -807,32 +786,17 @@ def handle_level2_mouseup(pos):
 
 def setup_level3():
     global quiz_set, quiz_index, quiz_answered, quiz_selected, level3_wrong, level_start_time
-    pools = load_quiz_questions()
-
-    easy_q = random.choice(pools.get("easy", [])
-                           ) if pools.get("easy") else None
-    diff_q = random.choice(pools.get("difficult", [])
-                           ) if pools.get("difficult") else None
-
-    selected_pair = []
-    if easy_q:
-        selected_pair.append(easy_q)
-    if diff_q:
-        selected_pair.append(diff_q)
-
-    # Mescola l'ordine della domanda facile e difficile
-    random.shuffle(selected_pair)
-    quiz_set = selected_pair
-
+    quiz_set = random.sample(QUIZ_QUESTIONS, k=min(6, len(QUIZ_QUESTIONS)))
     for q in quiz_set:
         order = list(range(len(q["options"])))
         random.shuffle(order)
         q["_display_options"] = [q["options"][i] for i in order]
         q["_correct_display_idx"] = order.index(q["correct"])
-
-    quiz_index, quiz_answered, quiz_selected, level3_wrong = 0, False, None, 0
+    quiz_index = 0
+    quiz_answered = False
+    quiz_selected = None
+    level3_wrong = 0
     change_state("L3_INTRO")
-    level_start_time = time.time()
 
 
 def start_level3_play():
@@ -847,6 +811,7 @@ def draw_level3():
     draw_panel(qrect, alpha=160)
     draw_text(f"Domanda {quiz_index + 1}/{len(quiz_set)}", small_font, SUBTITLE_COLOR,
               qrect.centerx, qrect.top + int(24 * scale_ratio))
+    # wrap question text simply if long
     draw_wrapped_text(q["q"], quiz_font, WHITE, qrect,
                       top_offset=int(50 * scale_ratio))
 
@@ -917,10 +882,10 @@ def advance_quiz():
     else:
         pass  # stays in L3_PLAY, update_layout not needed (static rects)
 
+
 # =====================================================================
 # RESULTS
 # =====================================================================
-
 
 final_score = 0
 total_time_display = 0

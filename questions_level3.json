@@ -1,0 +1,72 @@
+{
+  "easy": [
+    {
+      "q": "Lo squalo balena è uno squalo o una balena?",
+      "options": ["Squalo", "Balena"],
+      "correct": 0
+    },
+    {
+      "q": "Quale di questi animali deve uscire dall’acqua per respirare?",
+      "options": ["Squalo", "Delfino", "Medusa"],
+      "correct": 1
+    },
+    {
+      "q": "Esiste \"un’isola\" fatta solo di rifiuti chiamata \"ISOLA DI PLASTICA\"?",
+      "options": [
+        "Sì e ci vivono delle persone",
+        "Sì, ma si tratta di grandi accumuli di plastica e altri rifiuti galleggianti"
+      ],
+      "correct": 1
+    },
+    {
+      "q": "Quale di questi è un invertebrato?",
+      "options": ["Polpo", "Tartaruga marina", "Pesce spada"],
+      "correct": 0
+    },
+    {
+      "q": "La tartaruga marina è un pesce. Vero o falso?",
+      "options": ["Vero", "Falso"],
+      "correct": 1
+    }
+  ],
+  "difficult": [
+    {
+      "q": "Che cos’è l’ecosistema?",
+      "options": [
+        "L’acqua",
+        "Il sistema ecologico",
+        "L’insieme di organismi viventi e non viventi che interagiscono tra di loro e con l’ambiente"
+      ],
+      "correct": 2
+    },
+    {
+      "q": "Quale animale respira attraverso i polmoni?",
+      "options": ["Squalo", "Delfino", "Pesce palla"],
+      "correct": 1
+    },
+    {
+      "q": "Che cos’è la biodiversità?",
+      "options": [
+        "Insieme di organismi che fanno la fotosintesi",
+        "La varietà di organismi, specie ed ecosistemi che mantiene i processi vitali del pianeta",
+        "Animali, piante e rocce"
+      ],
+      "correct": 1
+    },
+    {
+      "q": "Quale animale nasce maschio e poi diventa femmina?",
+      "options": ["Delfino", "Stella marina", "Pesce pagliaccio"],
+      "correct": 2
+    },
+    {
+      "q": "Quale animale nasce femmina e poi diventa maschio?",
+      "options": ["Polpo", "Cernia", "Tartaruga marina"],
+      "correct": 1
+    },
+    {
+      "q": "La Posidonia oceanica è una pianta marina o un’alga?",
+      "options": ["Alga", "Pianta marina"],
+      "correct": 1
+    }
+  ]
+}
