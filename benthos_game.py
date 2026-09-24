@@ -4,43 +4,34 @@
  CNR - Stand del centro citta di Ancona - 25 settembre 2026
 =====================================================================
 
-Tre livelli, un unico avatar/nome scelti a inizio partita, un'unica
-classifica finale (come l'anno scorso, perche' "era molto accattivante").
+Tre livelli, ognuno con un sotto-livello FACILE e uno DIFFICILE
+(1 sfida ciascuno). Un solo avatar/nome e un'unica classifica finale.
 
-LIVELLO 1 - Memory: abbina l'animale al suo habitat (carte coperte)
-LIVELLO 2 - Trascina l'animale nel suo habitat (drag & drop)
-LIVELLO 3 - Quiz a raffica su curiosita' sul benthos
+LIVELLO 1 - Trova l'intruso   (1 gruppo facile + 1 gruppo difficile)
+LIVELLO 2 - Trascina l'animale nel suo habitat
+            (facile: aria/spiaggia - colonna d'acqua - fondale;
+             difficile: interfaccia aria-acqua / acqua-fondale)
+LIVELLO 3 - Quiz              (1 domanda facile + 1 difficile)
 
 ---------------------------------------------------------------------
-IMMAGINI DA PREPARARE (per ora il gioco funziona comunque: se un file
-manca viene disegnato un riquadro colorato con le iniziali al posto
-suo, quindi e' gia' giocabile/testabile cosi' com'e'. Basta aggiungere
-i file con questi ESATTI nomi e percorsi quando sono pronti):
+STRUTTURA DELLE CARTELLE (tutto viene LETTO DALLE CARTELLE: aggiungere
+o togliere immagini/gruppi non richiede di toccare il codice, tranne
+per l'"intruso" dei gruppi del livello 1, vedi INTRUDERS piu' sotto)
 
-  placeholder/avatars/avatar_squalo.png
-  placeholder/avatars/avatar_polpo.png
-  placeholder/avatars/avatar_stella.png
-  placeholder/avatars/avatar_delfino.png
-  placeholder/avatars/avatar_tartaruga.png
-  placeholder/avatars/avatar_cavalluccio.png
+placeholder/
+  avatars/                 avatar_squalo, avatar_polpo, ... (png/jpg)
+  background/sfondo.jpg    sfondo generico (opzionale)
+  level1_trova_intruso/
+      easy/       group1/ group2/ ...   (4 immagini per gruppo)
+      difficult/  group1/ group2/ ...
+  level2_trascinamento/
+      sfondo.jpg           (aria-acqua / colonna d'acqua / fondale)
+      easy/       aria_spiaggia/ colonna_acqua/ fondale/
+      difficult/  aria_acqua/ acqua_fondale/
+  level3_quiz/questions_level3.json
 
-  placeholder/animals/riccio.png
-  placeholder/animals/stella.png
-  placeholder/animals/cavalluccio.png
-  placeholder/animals/verme_tubicolo.png
-  placeholder/animals/gorgonia.png
-  placeholder/animals/paguro.png
-
-  placeholder/habitats/fondale_roccioso.png
-  placeholder/habitats/fondale_sabbioso.png
-  placeholder/habitats/posidonia.png
-  placeholder/habitats/fondale_fangoso.png
-  placeholder/habitats/coralligeno.png
-  placeholder/habitats/pozze_di_marea.png
-
-  placeholder/backgrounds/sfondo.png   (sfondo generico, opzionale)
-
-Vedi anche ASSETS_NEEDED.md nella stessa cartella.
+Le immagini mancanti sono sostituite da un riquadro colorato con le
+iniziali, quindi il gioco parte anche con cartelle incomplete.
 ---------------------------------------------------------------------
 """
 
@@ -50,7 +41,8 @@ import time
 import json
 import os
 import math
-import colorsys
+import re
+import zlib
 
 # --- Pygame Initialization ---
 pygame.init()
@@ -66,7 +58,6 @@ INITIAL_SCREEN_WIDTH = 2400
 INITIAL_SCREEN_HEIGHT = 1200
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-print(BASE_DIR)
 
 # --- Colors ---
 BLACK = (20, 20, 20)
@@ -80,22 +71,98 @@ WRONG_COLOR = (220, 90, 90)
 BUTTON_COLOR = (255, 165, 0)
 BUTTON_COLOR_DISABLED = (120, 110, 90)
 BORDER_COLOR = (255, 255, 255)
-LABEL_BAR_COLOR = (40, 40, 40, 220)
 SELECTED_COLOR = (255, 215, 0)
-PANEL_COLOR = (0, 0, 0, 120)
 
 # --- Custom events ---
-REVEAL_END_EVENT = pygame.USEREVENT + 1
-FLIP_BACK_EVENT = pygame.USEREVENT + 2
-QUIZ_ADVANCE_EVENT = pygame.USEREVENT + 3
+ADVANCE_EVENT = pygame.USEREVENT + 1   # fine del feedback -> prossima sfida
 
-# --- Leaderboard ---
+# =====================================================================
+# CONFIGURAZIONE
+# =====================================================================
+
+PLACEHOLDER_DIR = "placeholder"
+L1_DIR = os.path.join(PLACEHOLDER_DIR, "level1_trova_intruso")
+L2_DIR = os.path.join(PLACEHOLDER_DIR, "level2_trascinamento")
+L2_BACKGROUND = os.path.join(L2_DIR, "sfondo")        # .jpg/.png ok
+GENERIC_BG_CANDIDATES = [os.path.join(PLACEHOLDER_DIR, "background", "sfondo"),
+                         os.path.join(PLACEHOLDER_DIR, "backgrounds", "sfondo")]
+QUIZ_FILE_CANDIDATES = [
+    os.path.join(BASE_DIR, PLACEHOLDER_DIR, "level3_quiz",
+                 "questions_level3.json"),
+    os.path.join(BASE_DIR, "questions_level3.json"),
+]
 LEADERBOARD_FILE = os.path.join(BASE_DIR, "leaderboard.json")
-leaderboard = []
 
-# =====================================================================
-# GAME CONTENT (benthos animals, habitats, avatars, quiz questions)
-# =====================================================================
+SUBLEVELS = ("easy", "difficult")
+SUB_LABEL = {"easy": "Facile", "difficult": "Difficile"}
+
+# Penalita' (secondi aggiunti al tempo per ogni errore)
+PENALTY_L1 = 8
+PENALTY_L2 = 5
+PENALTY_L3 = 8
+
+# Livello saltato: vale zero (nessun tempo). Siccome la classifica e' a tempo,
+# saltare non deve convenire: ogni livello saltato fa scendere il punteggio
+# di questo valore (in "secondi equivalenti"), cosi' chi salta finisce
+# SOTTO chiunque abbia completato piu' livelli. Metti 0 per non penalizzare.
+SKIP_RANK_PENALTY = 100000
+
+PLAY_STATES = ("L1_PLAY", "L2_PLAY", "L3_PLAY")
+
+# Durata del feedback dopo una risposta (ms). NON conta nel tempo di gioco.
+L1_FEEDBACK_MS = 3000
+L2_FEEDBACK_MS = 900
+L3_FEEDBACK_MS = 1300
+
+# Livello 2: quanti animali (al massimo) per zona in ogni sotto-livello,
+# scelti a caso a ogni partita. Metti None per usarli TUTTI.
+L2_MAX_PER_ZONE = {"easy": 3, "difficult": 4}
+
+IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+# ---------------------------------------------------------------------
+# LIVELLO 1: QUAL E' L'INTRUSO DI OGNI GRUPPO?
+# Chiave: (sotto-livello, nome cartella del gruppo senza spazi/underscore)
+# Valore: (nome file dell'intruso SENZA estensione, spiegazione mostrata)
+# !!! Le mie scelte sono DEDUZIONI dai nomi dei file: controllale e
+# !!! correggile. I gruppi senza voce qui vengono saltati (con avviso).
+# ---------------------------------------------------------------------
+INTRUDERS = {
+    ("easy", "group1"): ("orata", "L'orata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
+    ("easy", "group2"): ("delfino", "Il delfino è un mammifero: gli altri sono pesci."),
+    ("easy", "group3"): ("occhiata", "L'occhiata nuota in acqua libera: gli altri sono organismi del fondale."),
+    ("easy", "group4"): ("riccio", "Il riccio di mare è un invertebrato: gli altri sono pesci."),
+    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile e respira aria."),  # DA VERIFICARE
+    ("difficult", "group1"): ("panocchia", "La panocchia è uno stomatopode: gli altri sono crostacei decapodi."),
+    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: gli altri sono alghe."),
+    ("difficult", "group3"): ("cystoseira", "La Cystoseira è un'alga: gli altri sono animali."),
+    ("difficult", "group4"): ("spugna", "La spugna non è un mollusco: gli altri tre lo sono."),
+    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione vive a contatto col fondale: gli altri nuotano in acqua libera."),  # DA VERIFICARE
+}
+
+# ---------------------------------------------------------------------
+# LIVELLO 2: dove si trova ogni zona su sfondo.jpg
+# (frazioni verticali (alto, basso) dell'area dello sfondo: 0 = cima, 1 = fondo)
+# Regola i valori se le fasce del tuo sfondo sono diverse.
+# ---------------------------------------------------------------------
+ZONE_BANDS = {
+    "aria_spiaggia": (0.00, 0.34),
+    "colonna_acqua": (0.34, 0.68),
+    "fondale": (0.68, 1.00),
+    "aria_acqua": (0.00, 0.40),
+    "acqua_fondale": (0.60, 1.00),
+}
+ZONE_LABELS = {
+    "aria_spiaggia": "Aria / spiaggia",
+    "colonna_acqua": "Colonna d'acqua",
+    "fondale": "Fondale",
+    "aria_acqua": "Interfaccia aria-acqua",
+    "acqua_fondale": "Interfaccia acqua-fondale",
+}
+L2_HINTS = {
+    "easy": "Trascina ogni animale nella zona in cui vive!",
+    "difficult": "Attenzione: alcuni animali vivono sulle 'interfacce' (aria-acqua o acqua-fondale)",
+}
 
 AVATARS = [
     {"id": "squalo_avatar", "name": "Squalo",
@@ -106,112 +173,170 @@ AVATARS = [
         "icon": "placeholder/avatars/avatar_stella.png"},
     {"id": "delfino_avatar", "name": "Delfino",
         "icon": "placeholder/avatars/avatar_delfino.png"},
-    {"id": "tartaruga_avatar", "name": "tartaruga",
+    {"id": "tartaruga_avatar", "name": "Tartaruga",
         "icon": "placeholder/avatars/avatar_tartaruga.png"},
     {"id": "cavalluccio_avatar", "name": "Cavalluccio",
         "icon": "placeholder/avatars/avatar_cavalluccio.png"},
 ]
 
-# Six unique animal <-> habitat pairs (used by Level 1 and Level 2)
-PAIRS = [
-    {"id": "riccio", "animal_name": "Riccio di mare", "animal_icon": "placeholder/animals/riccio.png",
-     "habitat_name": "Fondale roccioso", "habitat_icon": "placeholder/habitats/fondale_roccioso.png"},
-    {"id": "stella", "animal_name": "Stella marina", "animal_icon": "placeholder/animals/stella.png",
-     "habitat_name": "Fondale sabbioso", "habitat_icon": "placeholder/habitats/fondale_sabbioso.png"},
-    {"id": "cavalluccio", "animal_name": "Cavalluccio marino", "animal_icon": "placeholder/animals/cavalluccio.png",
-     "habitat_name": "Prateria di Posidonia", "habitat_icon": "placeholder/habitats/posidonia.png"},
-    {"id": "verme", "animal_name": "Verme tubicolo", "animal_icon": "placeholder/animals/verme_tubicolo.png",
-     "habitat_name": "Fondale fangoso", "habitat_icon": "placeholder/habitats/fondale_fangoso.png"},
-    {"id": "gorgonia", "animal_name": "Gorgonia", "animal_icon": "placeholder/animals/gorgonia.png",
-     "habitat_name": "Fondale coralligeno", "habitat_icon": "placeholder/habitats/coralligeno.png"},
-    {"id": "paguro", "animal_name": "Paguro", "animal_icon": "placeholder/animals/paguro.png",
-     "habitat_name": "Pozze di marea", "habitat_icon": "placeholder/habitats/pozze_di_marea.png"},
-]
-
-'''
-QUIZ_QUESTIONS = [
-    {"q": "Cosa significa 'benthos'?",
-     "options": ["Organismi che vivono sul o nel fondale marino",
-                 "Organismi che nuotano liberamente in mare aperto",
-                 "Organismi che vivono sulla superficie del mare",
-                 "Organismi che vivono nelle nuvole"], "correct": 0},
-    {"q": "Il riccio di mare si nutre principalmente di:",
-     "options": ["Alghe", "Plastica", "Meduse", "Uccelli marini"], "correct": 0},
-    {"q": "La Posidonia oceanica e':",
-     "options": ["Una pianta marina che forma vere e proprie praterie",
-                 "Un tipo di alga rossa", "Un pesce migratore", "Un crostaceo"], "correct": 0},
-    {"q": "Il paguro protegge il suo corpo molle usando:",
-     "options": ["Un guscio vuoto trovato sul fondale",
-                 "Una corazza propria come il granchio", "Le pinne", "La sabbia"], "correct": 0},
-    {"q": "Le gorgonie sono organismi:",
-     "options": ["Coloniali, simili a piccoli coralli", "Pesci solitari",
-                 "Molluschi bivalvi", "Meduse urticanti"], "correct": 0},
-    {"q": "Quale di questi NON e' un animale bentonico?",
-     "options": ["Tonno rosso", "Stella marina", "Riccio di mare", "Verme tubicolo"], "correct": 0},
-    {"q": "Il fondale fangoso si trova tipicamente:",
-     "options": ["In zone calme e profonde con poca corrente",
-                 "Solo sulle spiagge", "Solo in superficie", "Solo nei fiumi"], "correct": 0},
-    {"q": "Perche' le praterie di Posidonia sono importanti?",
-     "options": ["Producono ossigeno e sono nursery per molte specie",
-                 "Non hanno alcun ruolo ecologico", "Servono solo come decorazione",
-                 "Fanno male ai pesci"], "correct": 0},
-    {"q": "I nudibranchi sono:",
-     "options": ["Molluschi marini senza conchiglia, spesso molto colorati",
-                 "Pesci tropicali", "Piante marine", "Crostacei con chele"], "correct": 0},
-    {"q": "Il CNR studia gli ambienti marini soprattutto per:",
-     "options": ["Monitorare la biodiversita' e la salute degli ecosistemi",
-                 "Costruire porti turistici", "Vendere pesce", "Organizzare regate"], "correct": 0},
-]
-'''
-
-QUIZ_FILE = os.path.join(BASE_DIR, "questions_level3.json")
-
-
-def load_quiz_questions():
-    if os.path.exists(QUIZ_FILE):
-        try:
-            with open(QUIZ_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict) and "easy" in data and "difficult" in data:
-                    return data
-        except Exception as e:
-            print(f"Errore caricamento quiz JSON: {e}")
-    # Fallback di sicurezza
-    return {
-        "easy": [{"q": "Lo squalo balena è uno squalo o una balena?", "options": ["Squalo", "Balena"], "correct": 0}],
-        "difficult": [{"q": "Che cos’è l’ecosistema?", "options": ["L'acqua", "Il sistema ecologico", "L'insieme di organismi viventi e non viventi che interagiscono tra di loro e con l'ambiente"], "correct": 2}]
-    }
-
 # =====================================================================
-# IMAGE LOADING WITH GRACEFUL FALLBACK
-# (works right now even without real images: draws a colored box with
-#  initials; once real PNGs are added at the paths above, they are used
-#  automatically without any code change)
+# UTILITA' FILE / NOMI
 # =====================================================================
-
-
-ORIGINAL_IMAGES = {}
-SCALED_CACHE = {}
 
 
 def _resolve(path):
     return path if os.path.isabs(path) else os.path.join(BASE_DIR, path)
 
 
+def find_image_path(path):
+    """Ritorna il percorso reale del file, provando altre estensioni."""
+    full = _resolve(path)
+    if os.path.isfile(full):
+        return full
+    base, _ = os.path.splitext(full)
+    for e in IMG_EXTS:
+        for cand in (base + e, base + e.upper()):
+            if os.path.isfile(cand):
+                return cand
+    return None
+
+
+def natural_key(s):
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
+
+
+def norm_key(s):
+    return re.sub(r"[\s_\-]+", "", s.lower())
+
+
+def list_dirs(folder):
+    try:
+        names = os.listdir(_resolve(folder))
+    except OSError:
+        return []
+    names = [n for n in names if os.path.isdir(
+        os.path.join(_resolve(folder), n))]
+    return sorted(names, key=natural_key)
+
+
+def list_images(folder):
+    """Percorsi (relativi a BASE_DIR) delle immagini in una cartella."""
+    try:
+        names = os.listdir(_resolve(folder))
+    except OSError:
+        return []
+    names = [n for n in names if n.lower().endswith(IMG_EXTS)]
+    return [os.path.join(folder, n) for n in sorted(names, key=natural_key)]
+
+
+def stem_of(path):
+    return os.path.splitext(os.path.basename(path))[0]
+
+
+def split_name(stem):
+    """'stella_marina_Astropecten_irregularis' -> ('Stella marina', 'Astropecten irregularis')"""
+    tokens = stem.split("_")
+    idx = next((i for i, t in enumerate(tokens)
+                if i > 0 and t[:1].isupper()), None)
+    common = tokens[:idx] if idx else tokens
+    sci = tokens[idx:] if idx else []
+    return " ".join(common).capitalize(), " ".join(sci)
+
+
+def full_name(stem):
+    common, sci = split_name(stem)
+    return f"{common} ({sci})" if sci else common
+
+
+def zone_label(key):
+    return ZONE_LABELS.get(key.lower(), key.replace("_", " ").capitalize())
+
+
+# =====================================================================
+# CARICAMENTO CONTENUTI DALLE CARTELLE
+# =====================================================================
+
+def discover_l1_groups(sub):
+    base = os.path.join(L1_DIR, sub)
+    groups = []
+    for gname in list_dirs(base):
+        imgs = list_images(os.path.join(base, gname))
+        if len(imgs) < 2:
+            continue
+        info = INTRUDERS.get((sub, norm_key(gname)))
+        if info is None:
+            print(f"[AVVISO] Nessun intruso definito per {sub}/{gname}: gruppo saltato")
+            continue
+        stems = [stem_of(p).lower() for p in imgs]
+        if info[0].lower() not in stems:
+            print(f"[AVVISO] L'intruso '{info[0]}' non e' in {sub}/{gname}: gruppo saltato")
+            continue
+        groups.append({"name": gname,
+                       "images": [{"path": p, "stem": stem_of(p)} for p in imgs],
+                       "intruder": info[0].lower(), "reason": info[1]})
+    return groups
+
+
+def discover_l2_zones(sub):
+    base = os.path.join(L2_DIR, sub)
+    zones = []
+    for zname in list_dirs(base):
+        imgs = list_images(os.path.join(base, zname))
+        if imgs:
+            zones.append({"key": zname, "images": imgs})
+    return zones
+
+
+def load_quiz_questions():
+    for path in QUIZ_FILE_CANDIDATES:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+            except Exception as e:
+                print(f"Errore caricamento quiz JSON: {e}")
+    return {
+        "easy": [{"q": "Lo squalo balena è uno squalo o una balena?", "options": ["Squalo", "Balena"], "correct": 0}],
+        "difficult": [{"q": "Che cos'è l'ecosistema?", "options": ["L'acqua", "Il sistema ecologico", "L'insieme di organismi viventi e non viventi che interagiscono tra loro e con l'ambiente"], "correct": 2}],
+    }
+
+
+def collect_particle_icons():
+    icons = []
+    for sub in SUBLEVELS:
+        for z in discover_l2_zones(sub):
+            for p in z["images"]:
+                icons.append((p, split_name(stem_of(p))[0]))
+    return icons or [("__none__", "Benthos")]
+
+
+# =====================================================================
+# IMMAGINI CON FALLBACK
+# =====================================================================
+
+ORIGINAL_IMAGES = {}
+SCALED_CACHE = {}
+
+
 def load_original(path):
     if path in ORIGINAL_IMAGES:
         return ORIGINAL_IMAGES[path]
     img = None
-    try:
-        img = pygame.image.load(_resolve(path)).convert_alpha()
-    except Exception:
-        img = None
+    real = find_image_path(path)
+    if real:
+        try:
+            img = pygame.image.load(real).convert_alpha()
+        except Exception:
+            img = None
     ORIGINAL_IMAGES[path] = img
     return img
 
 
 def _fallback_color(label):
-    h = (abs(hash(label)) % 360) / 360.0
+    import colorsys
+    h = (zlib.crc32(label.encode("utf-8")) % 360) / 360.0
     r, g, b = colorsys.hsv_to_rgb(h, 0.55, 0.80)
     return int(r * 255), int(g * 255), int(b * 255)
 
@@ -224,26 +349,45 @@ def make_fallback_surface(size, label):
     pygame.draw.rect(surf, color, (0, 0, w, h), border_radius=radius)
     pygame.draw.rect(surf, WHITE, (0, 0, w, h), max(
         2, int(min(w, h) * 0.02)), border_radius=radius)
-    font_size = max(10, int(min(w, h) * 0.32))
-    f = pygame.font.Font(None, font_size)
+    f = pygame.font.Font(None, max(10, int(min(w, h) * 0.32)))
     words = [wd for wd in label.split() if wd]
     letters = "".join(wd[0] for wd in words[:2]).upper() if words else "?"
     txt = f.render(letters, True, WHITE)
-    trect = txt.get_rect(center=(w // 2, h // 2))
-    surf.blit(txt, trect)
+    surf.blit(txt, txt.get_rect(center=(w // 2, h // 2)))
     return surf
 
 
-def get_scaled(path, size, label=""):
+def get_scaled(path, size, label="", mode="stretch", radius=0):
+    """mode: 'stretch' (riempie), 'fit' (mantiene proporzioni, contenuta),
+    'cover' (mantiene proporzioni, riempie e ritaglia - ideale per foto)."""
     size = (max(2, int(size[0])), max(2, int(size[1])))
-    key = (path, size)
+    key = (path, size, mode, radius)
     if key in SCALED_CACHE:
         return SCALED_CACHE[key]
     original = load_original(path)
     scaled = None
     if original is not None:
         try:
-            scaled = pygame.transform.smoothscale(original, size)
+            w, h = size
+            ow, oh = original.get_size()
+            if mode == "cover":
+                k = max(w / ow, h / oh)
+                nw, nh = max(1, round(ow * k)), max(1, round(oh * k))
+                tmp = pygame.transform.smoothscale(original, (nw, nh))
+                scaled = pygame.Surface((w, h), pygame.SRCALPHA)
+                scaled.blit(tmp, ((w - nw) // 2, (h - nh) // 2))
+                if radius > 0:
+                    mask = pygame.Surface((w, h), pygame.SRCALPHA)
+                    pygame.draw.rect(mask, (255, 255, 255, 255),
+                                     (0, 0, w, h), border_radius=radius)
+                    scaled.blit(mask, (0, 0),
+                                special_flags=pygame.BLEND_RGBA_MIN)
+            elif mode == "fit":
+                k = min(w / ow, h / oh)
+                scaled = pygame.transform.smoothscale(
+                    original, (max(1, round(ow * k)), max(1, round(oh * k))))
+            else:
+                scaled = pygame.transform.smoothscale(original, size)
         except Exception:
             scaled = None
     if scaled is None:
@@ -253,17 +397,19 @@ def get_scaled(path, size, label=""):
 
 
 # =====================================================================
-# FONTS
+# FONT E DISEGNO DI BASE
 # =====================================================================
 
 scale_ratio = 1.0
-title_font = subtitle_font = status_font = card_font = label_font = None
-leaderboard_font = message_font = button_font = quiz_font = option_font = small_font = None
+title_font = subtitle_font = status_font = label_font = None
+leaderboard_font = message_font = button_font = quiz_font = option_font = None
+small_font = tiny_font = None
 
 
 def initialize_fonts():
-    global scale_ratio, title_font, subtitle_font, status_font, card_font
-    global label_font, leaderboard_font, message_font, button_font, quiz_font, option_font, small_font
+    global scale_ratio, title_font, subtitle_font, status_font
+    global label_font, leaderboard_font, message_font, button_font
+    global quiz_font, option_font, small_font, tiny_font
 
     scale_ratio = min(SCREEN_WIDTH / INITIAL_SCREEN_WIDTH,
                       SCREEN_HEIGHT / INITIAL_SCREEN_HEIGHT)
@@ -272,7 +418,6 @@ def initialize_fonts():
     title_font = pygame.font.Font(None, int(100 * scale_ratio))
     subtitle_font = pygame.font.Font(None, int(70 * scale_ratio))
     status_font = pygame.font.Font(None, int(70 * scale_ratio))
-    card_font = pygame.font.Font(None, int(140 * scale_ratio))
     label_font = pygame.font.Font(None, int(50 * scale_ratio))
     leaderboard_font = pygame.font.Font(None, int(46 * scale_ratio))
     message_font = pygame.font.Font(None, int(56 * scale_ratio))
@@ -280,21 +425,52 @@ def initialize_fonts():
     quiz_font = pygame.font.Font(None, int(70 * scale_ratio))
     option_font = pygame.font.Font(None, int(54 * scale_ratio))
     small_font = pygame.font.Font(None, int(38 * scale_ratio))
+    tiny_font = pygame.font.Font(None, int(28 * scale_ratio))
 
 
 def draw_text(text, font, color, x, y, align="center"):
-    text_surface = font.render(text, True, color)
-    text_rect = text_surface.get_rect()
+    surf = font.render(text, True, color)
+    r = surf.get_rect()
     if align == "center":
-        text_rect.center = (x, y)
+        r.center = (x, y)
     elif align == "left":
-        text_rect.left = x
-        text_rect.centery = y
+        r.left = x
+        r.centery = y
     elif align == "right":
-        text_rect.right = x
-        text_rect.centery = y
-    screen.blit(text_surface, text_rect)
-    return text_rect
+        r.right = x
+        r.centery = y
+    screen.blit(surf, r)
+    return r
+
+
+def draw_text_fit(text, font, color, cx, cy, max_w):
+    surf = font.render(text, True, color)
+    if surf.get_width() > max_w > 4:
+        h = max(1, int(surf.get_height() * max_w / surf.get_width()))
+        surf = pygame.transform.smoothscale(surf, (int(max_w), h))
+    screen.blit(surf, surf.get_rect(center=(cx, cy)))
+
+
+def draw_wrapped_text(text, font, color, rect, top_offset=0, vcenter=False, max_width_ratio=0.92):
+    max_width = rect.width * max_width_ratio
+    lines, current = [], ""
+    for w in text.split(" "):
+        trial = (current + " " + w).strip()
+        if font.size(trial)[0] <= max_width:
+            current = trial
+        else:
+            if current:
+                lines.append(current)
+            current = w
+    if current:
+        lines.append(current)
+    lh = font.get_height() + int(4 * scale_ratio)
+    if vcenter:
+        start_y = rect.centery - lh * len(lines) / 2 + lh / 2
+    else:
+        start_y = rect.top + top_offset + lh / 2
+    for i, line in enumerate(lines):
+        draw_text(line, font, color, rect.centerx, start_y + i * lh)
 
 
 def draw_panel(rect, alpha=140):
@@ -302,6 +478,12 @@ def draw_panel(rect, alpha=140):
     s.fill((0, 0, 0, alpha))
     screen.blit(s, (rect.x, rect.y))
     pygame.draw.rect(screen, BORDER_COLOR, rect, 2, border_radius=20)
+
+
+def draw_overlay(rect, color, alpha):
+    s = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+    s.fill((*color, alpha))
+    screen.blit(s, rect.topleft)
 
 
 def draw_button(rect, text, font=None, enabled=True, base_color=None):
@@ -313,23 +495,26 @@ def draw_button(rect, text, font=None, enabled=True, base_color=None):
     return rect
 
 
+_generic_bg = {"searched": False, "path": None}
+
+
 def draw_background():
-    bg = get_scaled("placeholder/backgrounds/sfondo.png",
-                    (SCREEN_WIDTH, SCREEN_HEIGHT), "Sfondo")
-    # If it's a real background image it will fill nicely; if it's the
-    # fallback colored box, draw a simple sea gradient instead (nicer default).
-    if load_original("placeholder/backgrounds/sfondo.png") is not None:
-        screen.blit(bg, (0, 0))
-    else:
-        for y in range(0, SCREEN_HEIGHT, 4):
-            t = y / max(1, SCREEN_HEIGHT)
-            r = int(SEA_BLUE_DARK[0] +
-                    (SEA_BLUE_LIGHT[0] - SEA_BLUE_DARK[0]) * t)
-            g = int(SEA_BLUE_DARK[1] +
-                    (SEA_BLUE_LIGHT[1] - SEA_BLUE_DARK[1]) * t)
-            b = int(SEA_BLUE_DARK[2] +
-                    (SEA_BLUE_LIGHT[2] - SEA_BLUE_DARK[2]) * t)
-            pygame.draw.rect(screen, (r, g, b), (0, y, SCREEN_WIDTH, 4))
+    if not _generic_bg["searched"]:
+        _generic_bg["searched"] = True
+        for c in GENERIC_BG_CANDIDATES:
+            p = find_image_path(c)
+            if p:
+                _generic_bg["path"] = p
+                break
+    if _generic_bg["path"]:
+        screen.blit(get_scaled(_generic_bg["path"],
+                    (SCREEN_WIDTH, SCREEN_HEIGHT), "Sfondo"), (0, 0))
+        return
+    for y in range(0, SCREEN_HEIGHT, 4):
+        t = y / max(1, SCREEN_HEIGHT)
+        col = tuple(int(SEA_BLUE_DARK[i] + (SEA_BLUE_LIGHT[i] - SEA_BLUE_DARK[i]) * t)
+                    for i in range(3))
+        pygame.draw.rect(screen, col, (0, y, SCREEN_WIDTH, 4))
 
 
 def draw_header(level_label=""):
@@ -338,16 +523,19 @@ def draw_header(level_label=""):
     draw_text("Sharper Night 2026 - CNR", subtitle_font,
               SUBTITLE_COLOR, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.13)
     if player_name:
-        draw_text(f"{player_name}", small_font, WHITE,
+        draw_text(player_name, small_font, WHITE,
                   SCREEN_WIDTH * 0.03, SCREEN_HEIGHT * 0.04, align="left")
     if level_label:
-        draw_text(level_label, status_font, WHITE,
-                  SCREEN_WIDTH * 0.92, SCREEN_HEIGHT * 0.07)
+        draw_text(level_label, label_font, WHITE,
+                  SCREEN_WIDTH * 0.97, SCREEN_HEIGHT * 0.07, align="right")
 
 
 # =====================================================================
-# LEADERBOARD
+# CLASSIFICA
 # =====================================================================
+
+leaderboard = []
+
 
 def load_leaderboard():
     if os.path.exists(LEADERBOARD_FILE):
@@ -368,11 +556,11 @@ def save_leaderboard():
         print(f"Errore nel salvataggio della classifica: {e}")
 
 
-def get_player_rank(username, final_score):
+def get_player_rank(username, score):
     sorted_lb = sorted(leaderboard, key=lambda x: x.get(
         "final_score", 0), reverse=True)
     for i, entry in enumerate(sorted_lb):
-        if entry["username"] == username and entry["final_score"] == final_score:
+        if entry["username"] == username and entry["final_score"] == score:
             return i + 1
     return None
 
@@ -383,32 +571,35 @@ def draw_leaderboard_box(rect):
               rect.centerx, rect.top + 35 * scale_ratio)
     sorted_lb = sorted(leaderboard, key=lambda x: x.get(
         "final_score", 0), reverse=True)
-    y_offset = rect.top + 90 * scale_ratio
+    y = rect.top + 90 * scale_ratio
+    any_skipped = False
     for i, entry in enumerate(sorted_lb[:5]):
-        t = entry.get("time", "N/A")
-        text = f"{i + 1}. {entry['username']} - {t}s"
-        draw_text(text, leaderboard_font, WHITE, rect.left +
-                  25 * scale_ratio, y_offset, align="left")
-        y_offset += 46 * scale_ratio
+        sk = entry.get("skipped", 0)
+        suffix = f" (salt. {sk})" if sk else ""
+        any_skipped = any_skipped or bool(sk)
+        draw_text(f"{i + 1}. {entry['username']} - {entry.get('time', 'N/A')}s{suffix}",
+                  leaderboard_font, WHITE, rect.left + 25 * scale_ratio, y, align="left")
+        y += 46 * scale_ratio
+    if any_skipped:
+        draw_text("salt. = livelli saltati", tiny_font, SUBTITLE_COLOR,
+                  rect.left + 25 * scale_ratio, rect.bottom - 22 * scale_ratio, align="left")
 
 
 # =====================================================================
-# PARTICLE EFFECT (final win celebration - kept because it was a hit!)
+# EFFETTO PARTICELLE FINALE
 # =====================================================================
 
 PARTICLES = []
-PARTICLE_ICON_PATHS = [p["animal_icon"] for p in PAIRS]
+PARTICLE_ICONS = []
 
 
 class BenthosParticle:
     def __init__(self, x, y, size):
-        self.image_path = random.choice(PARTICLE_ICON_PATHS)
-        label = next((p["animal_name"]
-                     for p in PAIRS if p["animal_icon"] == self.image_path), "")
-        self.image = get_scaled(self.image_path, (size, size), label)
+        path, label = random.choice(PARTICLE_ICONS)
+        self.image = get_scaled(path, (size, size), label,
+                                mode="cover", radius=size // 4)
         self.rect = self.image.get_rect(center=(x, y))
-        self.x = float(x)
-        self.y = float(y)
+        self.x, self.y = float(x), float(y)
         angle = random.uniform(0, 2 * math.pi)
         speed = random.uniform(8, 18)
         self.vx = speed * math.cos(angle)
@@ -429,67 +620,77 @@ class BenthosParticle:
 
     def draw(self, surface):
         if self.lifetime > 0:
-            if self.vx != 0 or self.vy != 0:
-                angle = math.atan2(self.vy, self.vx) * (180 / math.pi)
-                rotated_image = pygame.transform.rotate(self.image, -angle)
-                rotated_rect = rotated_image.get_rect(center=self.rect.center)
-                surface.blit(rotated_image, rotated_rect)
-            else:
-                surface.blit(self.image, self.rect)
+            angle = math.degrees(math.atan2(self.vy, self.vx))
+            rot = pygame.transform.rotate(self.image, -angle)
+            surface.blit(rot, rot.get_rect(center=self.rect.center))
 
 
 def launch_win_effect(cx, cy, count=250):
     PARTICLES.clear()
     size = int(80 * scale_ratio)
     for _ in range(count):
-        x0 = cx + random.uniform(-20, 20)
-        y0 = cy + random.uniform(-20, 20)
-        PARTICLES.append(BenthosParticle(x0, y0, size))
+        PARTICLES.append(BenthosParticle(
+            cx + random.uniform(-20, 20), cy + random.uniform(-20, 20), size))
 
 
 # =====================================================================
-# GLOBAL GAME / PLAYER STATE
+# STATO GLOBALE
 # =====================================================================
 
-STATE = "AVATAR"  # AVATAR -> L1_INTRO -> L1_REVEAL -> L1_PLAY -> L2_INTRO -> L2_PLAY
+STATE = "AVATAR"  # AVATAR -> L1_INTRO -> L1_PLAY -> L2_INTRO -> L2_PLAY
 #                 -> L3_INTRO -> L3_PLAY -> RESULTS
 
 selected_avatar_idx = None
 player_name = ""
 name_active = True
 
-level1_time = 0.0
-level2_time = 0.0
-level3_time = 0.0
-level2_wrong = 0
-level3_wrong = 0
-
+level1_time = level2_time = level3_time = 0.0
+level1_wrong = level2_wrong = level3_wrong = 0
 level_start_time = 0.0
 
-# --- Level 1 (memory) state ---
-game_board = []
-flipped_cards = []
-matched_pairs_l1 = 0
-can_flip_l1 = True
-is_revealing_l1 = False
+# Livello 1
+l1_queue = []        # [(sub, group)]
+l1_pos = 0
+l1_group = None      # gruppo corrente (immagini mescolate)
+l1_sub = "easy"
+l1_answered = False
+l1_selected = None
 
-# --- Level 2 (drag & drop) state ---
-habitat_zones = []
-drag_items = []
-matched_pairs_l2 = 0
+# Livello 2
+l2_queue = []        # [(sub, zones_data)]
+l2_pos = 0
+l2_zones = []
+l2_items = []
+l2_matched = 0
+l2_locked = False
 dragging_item = None
 drag_offset = (0, 0)
-flash_zone = None  # (zone, color, until_time)
+flash_zone = None    # (zone, color, until_time)
 
-# --- Level 3 (quiz) state ---
+# Livello 3
 quiz_set = []
 quiz_index = 0
 quiz_answered = False
 quiz_selected = None
-quiz_feedback_until = 0
 
-# --- Layout rects (recomputed by update_layout per state) ---
+skipped_levels = set()    # numeri dei livelli saltati (1, 2, 3)
+skip_confirm = False      # finestra "vuoi saltare?" aperta
+skip_confirm_start = 0.0
+
 LAYOUT = {}
+
+
+def current_sub():
+    try:
+        if STATE == "L1_PLAY":
+            return l1_sub
+        if STATE == "L2_PLAY":
+            return l2_queue[l2_pos][0]
+        if STATE == "L3_PLAY":
+            return quiz_set[quiz_index]["_sub"]
+    except IndexError:
+        pass
+    return "easy"
 
 
 # =====================================================================
@@ -497,115 +698,123 @@ LAYOUT = {}
 # =====================================================================
 
 def update_layout():
-    """Recomputes every rect used by the current screen. Called on resize
-    and whenever the state changes."""
+    """Ricalcola tutti i rettangoli della schermata corrente."""
     global LAYOUT
     LAYOUT = {}
+    W, H = SCREEN_WIDTH, SCREEN_HEIGHT
 
     if STATE == "AVATAR":
         card_size = int(260 * scale_ratio)
         margin = int(40 * scale_ratio)
-        cols = 3
-        rows = 2
+        cols, rows = 3, 2
         grid_w = cols * card_size + (cols - 1) * margin
         grid_h = rows * card_size + (rows - 1) * margin
-        grid_x = (SCREEN_WIDTH - grid_w) / 2
-        grid_y = SCREEN_HEIGHT * 0.28
-        rects = []
-        for i, av in enumerate(AVATARS):
-            r = i // cols
-            c = i % cols
-            rect = pygame.Rect(grid_x + c * (card_size + margin), grid_y + r * (card_size + margin),
-                               card_size, card_size)
-            rects.append(rect)
-        LAYOUT["avatar_rects"] = rects
+        grid_x = (W - grid_w) / 2
+        grid_y = H * 0.28
+        LAYOUT["avatar_rects"] = [
+            pygame.Rect(grid_x + (i % cols) * (card_size + margin),
+                        grid_y + (i // cols) * (card_size + margin), card_size, card_size)
+            for i in range(len(AVATARS))]
         LAYOUT["avatar_size"] = card_size
-
-        box_w = int(SCREEN_WIDTH * 0.28)
-        box_h = int(70 * scale_ratio)
-        LAYOUT["name_box"] = pygame.Rect(SCREEN_WIDTH / 2 - box_w / 2, grid_y + grid_h + int(60 * scale_ratio),
-                                         box_w, box_h)
+        box_w, box_h = int(W * 0.28), int(70 * scale_ratio)
+        LAYOUT["name_box"] = pygame.Rect(
+            W / 2 - box_w / 2, grid_y + grid_h + int(60 * scale_ratio), box_w, box_h)
         btn_w, btn_h = int(280 * scale_ratio), int(80 * scale_ratio)
-        LAYOUT["start_btn"] = pygame.Rect(SCREEN_WIDTH / 2 - btn_w / 2,
-                                          LAYOUT["name_box"].bottom + int(40 * scale_ratio), btn_w, btn_h)
+        LAYOUT["start_btn"] = pygame.Rect(
+            W / 2 - btn_w / 2, LAYOUT["name_box"].bottom + int(40 * scale_ratio), btn_w, btn_h)
 
     elif STATE in ("L1_INTRO", "L2_INTRO", "L3_INTRO"):
         btn_w, btn_h = int(320 * scale_ratio), int(90 * scale_ratio)
         LAYOUT["continue_btn"] = pygame.Rect(
-            SCREEN_WIDTH / 2 - btn_w / 2, SCREEN_HEIGHT * 0.78, btn_w, btn_h)
+            W / 2 - btn_w / 2, H * 0.78, btn_w, btn_h)
 
-    elif STATE in ("L1_REVEAL", "L1_PLAY"):
-        card_size = int(300 * scale_ratio)
-        margin = int(45 * scale_ratio)
-        cols = 6
-        grid_w = cols * card_size + (cols - 1) * margin
-        grid_x = (SCREEN_WIDTH - grid_w) / 2
-        grid_y_top = SCREEN_HEIGHT * 0.32
-        grid_y_bottom = grid_y_top + card_size + margin + int(40 * scale_ratio)
-        LAYOUT["card_size"] = card_size
-        LAYOUT["grid_x"] = grid_x
-        LAYOUT["grid_width"] = grid_w
-        LAYOUT["grid_y_top"] = grid_y_top
-        LAYOUT["grid_y_bottom"] = grid_y_bottom
-        for i, row in enumerate(game_board):
-            for j, card in enumerate(row):
-                card["rect"] = pygame.Rect(grid_x + j * (card_size + margin),
-                                           grid_y_top if i == 0 else grid_y_bottom,
-                                           card_size, card_size)
+    elif STATE == "L1_PLAY":
+        n = len(l1_group["images"]) if l1_group else 4
+        margin = int(W * 0.02)
+        card = int(min((W * 0.92 - (n - 1) * margin) / n, H * 0.40))
+        x0 = (W - (n * card + (n - 1) * margin)) / 2
+        LAYOUT["l1_rects"] = [pygame.Rect(x0 + i * (card + margin), H * 0.34, card, card)
+                              for i in range(n)]
+        LAYOUT["l1_feedback"] = pygame.Rect(W * 0.1, H * 0.83, W * 0.8, H * 0.15)
 
     elif STATE == "L2_PLAY":
-        zone_size = int(260 * scale_ratio)
-        margin = int(35 * scale_ratio)
-        n = len(habitat_zones) if habitat_zones else len(PAIRS)
-        total_w = n * zone_size + (n - 1) * margin
-        start_x = (SCREEN_WIDTH - total_w) / 2
-        zone_y = SCREEN_HEIGHT * 0.28
-        for i, zone in enumerate(habitat_zones):
-            zone["rect"] = pygame.Rect(
-                start_x + i * (zone_size + margin), zone_y, zone_size, zone_size)
-        LAYOUT["zone_size"] = zone_size
-
-        item_size = int(170 * scale_ratio)
-        item_margin = int(30 * scale_ratio)
-        total_iw = len(drag_items) * item_size + \
-            (len(drag_items) - 1) * item_margin
-        start_ix = (SCREEN_WIDTH - total_iw) / 2
-        item_y = SCREEN_HEIGHT * 0.72
-        for i, item in enumerate(drag_items):
-            home = pygame.Rect(start_ix + i * (item_size +
-                               item_margin), item_y, item_size, item_size)
-            item["home_rect"] = home
-            if not item["placed"] and not item.get("dragging"):
-                item["rect"] = home.copy()
-        LAYOUT["item_size"] = item_size
+        scene = pygame.Rect(int(W * 0.03), int(H * 0.235), int(W * 0.66), int(H * 0.73))
+        LAYOUT["scene"] = scene
+        n = max(1, len(l2_zones))
+        for i, z in enumerate(l2_zones):
+            y0, y1 = ZONE_BANDS.get(z["key"].lower(), (i / n, (i + 1) / n))
+            z["rect"] = pygame.Rect(scene.x, scene.y + int(scene.h * y0),
+                                    scene.w, int(scene.h * (y1 - y0)))
+        # vassoio degli animali (a destra)
+        tray = pygame.Rect(int(W * 0.72), scene.y, int(W * 0.25), scene.h)
+        LAYOUT["tray"] = tray
+        gap = max(4, int(16 * scale_ratio))
+        cnt = max(1, len(l2_items))
+        best, best_cols = 0, 1
+        for cols in range(1, cnt + 1):
+            rows = math.ceil(cnt / cols)
+            s = min((tray.w - (cols + 1) * gap) / cols,
+                    (tray.h - (rows + 1) * gap) / rows)
+            if s > best:
+                best, best_cols = s, cols
+        size = int(min(best, 200 * scale_ratio))
+        grid_w = best_cols * size + (best_cols - 1) * gap
+        gx = tray.x + (tray.w - grid_w) / 2
+        for i, it in enumerate(l2_items):
+            r, c = divmod(i, best_cols)
+            it["home_rect"] = pygame.Rect(
+                gx + c * (size + gap), tray.y + gap + r * (size + gap), size, size)
+            if not it["placed"] and not it["dragging"]:
+                it["rect"] = it["home_rect"].copy()
+        # animali gia' piazzati: disposti dentro la loro zona
+        ps = int(110 * scale_ratio)
+        label_h = small_font.get_height() + int(24 * scale_ratio)
+        for z in l2_zones:
+            x = z["rect"].x + gap
+            y = z["rect"].y + label_h + gap
+            for it in z["placed"]:
+                if x + ps > z["rect"].right - gap:
+                    x = z["rect"].x + gap
+                    y += ps + gap
+                it["rect"] = pygame.Rect(x, y, ps, ps)
+                x += ps + gap
 
     elif STATE == "L3_PLAY":
-        box_w = SCREEN_WIDTH * 0.7
-        LAYOUT["question_rect"] = pygame.Rect(SCREEN_WIDTH / 2 - box_w / 2, SCREEN_HEIGHT * 0.27, box_w,
-                                              int(140 * scale_ratio))
-        opt_w = box_w
-        opt_h = int(100 * scale_ratio)
-        opt_gap = int(24 * scale_ratio)
-        opt_rects = []
+        box_w = W * 0.7
+        LAYOUT["question_rect"] = pygame.Rect(
+            W / 2 - box_w / 2, H * 0.27, box_w, int(140 * scale_ratio))
+        opt_h, opt_gap = int(100 * scale_ratio), int(24 * scale_ratio)
         top = LAYOUT["question_rect"].bottom + int(50 * scale_ratio)
-        for i in range(4):
-            r = pygame.Rect(SCREEN_WIDTH / 2 - opt_w / 2, top +
-                            i * (opt_h + opt_gap), opt_w, opt_h)
-            opt_rects.append(r)
-        LAYOUT["option_rects"] = opt_rects
+        LAYOUT["option_rects"] = [
+            pygame.Rect(W / 2 - box_w / 2, top + i * (opt_h + opt_gap), box_w, opt_h)
+            for i in range(4)]
 
     elif STATE == "RESULTS":
         pad = int(20 * scale_ratio)
-        lb_w = SCREEN_WIDTH * 0.32
-        lb_h = SCREEN_HEIGHT * 0.36
+        lb_w, lb_h = W * 0.32, H * 0.36
         LAYOUT["leaderboard_rect"] = pygame.Rect(
-            pad, SCREEN_HEIGHT - lb_h - pad, lb_w, lb_h)
-        msg_h = SCREEN_HEIGHT * 0.12
-        LAYOUT["message_rect"] = pygame.Rect(pad, LAYOUT["leaderboard_rect"].top - msg_h - int(10 * scale_ratio),
-                                             lb_w, msg_h)
+            pad, H - lb_h - pad, lb_w, lb_h)
+        msg_h = H * 0.12
+        LAYOUT["message_rect"] = pygame.Rect(
+            pad, LAYOUT["leaderboard_rect"].top - msg_h - int(10 * scale_ratio), lb_w, msg_h)
         btn_w, btn_h = int(320 * scale_ratio), int(90 * scale_ratio)
-        LAYOUT["play_again_btn"] = pygame.Rect(SCREEN_WIDTH / 2 - btn_w / 2, SCREEN_HEIGHT - btn_h - int(40 * scale_ratio),
-                                               btn_w, btn_h)
+        LAYOUT["play_again_btn"] = pygame.Rect(
+            W / 2 - btn_w / 2, H - btn_h - int(40 * scale_ratio), btn_w, btn_h)
+
+    if STATE in PLAY_STATES:
+        # pulsante "Salta livello" (in alto a sinistra, sotto il nome)
+        LAYOUT["skip_btn"] = pygame.Rect(int(W * 0.03), int(H * 0.085),
+                                         int(270 * scale_ratio), int(64 * scale_ratio))
+        # finestra di conferma
+        mw, mh = int(W * 0.5), int(H * 0.32)
+        modal = pygame.Rect(int(W / 2 - mw / 2), int(H / 2 - mh / 2), mw, mh)
+        LAYOUT["skip_modal"] = modal
+        bw = int(min(400 * scale_ratio, mw * 0.44))
+        bh = int(80 * scale_ratio)
+        gap = int(30 * scale_ratio)
+        by = modal.bottom - bh - int(30 * scale_ratio)
+        LAYOUT["skip_yes"] = pygame.Rect(modal.centerx - bw - gap // 2, by, bw, bh)
+        LAYOUT["skip_no"] = pygame.Rect(modal.centerx + gap // 2, by, bw, bh)
 
 
 def change_state(new_state):
@@ -614,225 +823,302 @@ def change_state(new_state):
     update_layout()
 
 
+def skip_feedback_time(ms):
+    """Il tempo del feedback (risposta mostrata) non conta nel cronometro."""
+    global level_start_time
+    level_start_time += ms / 1000.0
+
+
 # =====================================================================
-# LEVEL 1 - MEMORY
+# LIVELLO 1 - TROVA L'INTRUSO
 # =====================================================================
 
-def setup_level1():
-    global game_board, flipped_cards, matched_pairs_l1, can_flip_l1, is_revealing_l1, level_start_time
-    animal_cards = [{"kind": "animal", "pair_id": i, "icon": p["animal_icon"], "label": p["animal_name"],
-                     "is_flipped": False, "is_matched": False} for i, p in enumerate(PAIRS)]
-    habitat_cards = [{"kind": "habitat", "pair_id": i, "icon": p["habitat_icon"], "label": p["habitat_name"],
-                      "is_flipped": False, "is_matched": False} for i, p in enumerate(PAIRS)]
-    random.shuffle(animal_cards)
-    random.shuffle(habitat_cards)
-    game_board = [animal_cards, habitat_cards]
-    flipped_cards.clear()
-    matched_pairs_l1 = 0
-    can_flip_l1 = False
-    is_revealing_l1 = True
-    change_state("L1_REVEAL")
-    pygame.time.set_timer(REVEAL_END_EVENT, 6000)
+def prepare_level1():
+    global l1_queue
+    l1_queue = []
+    for sub in SUBLEVELS:
+        groups = discover_l1_groups(sub)
+        if groups:
+            l1_queue.append((sub, random.choice(groups)))
+    if l1_queue:
+        change_state("L1_INTRO")
+    else:
+        print("[AVVISO] Nessun gruppo valido per il livello 1: livello saltato")
+        prepare_level2()
 
 
-def draw_level1_board():
-    card_size = LAYOUT["card_size"]
-    for row in game_board:
-        for card in row:
-            rect = card["rect"]
-            if is_revealing_l1 or card["is_flipped"] or card["is_matched"]:
-                bg = MATCHED_COLOR if card["is_matched"] else BLACK
-                pygame.draw.rect(screen, bg, rect, border_radius=20)
-                pygame.draw.rect(screen, BORDER_COLOR, rect, int(
-                    6 * scale_ratio), border_radius=20)
-                img = get_scaled(card["icon"], (card_size - int(24 * scale_ratio), card_size - int(24 * scale_ratio)),
-                                 card["label"])
-                img_rect = img.get_rect(center=rect.center)
-                screen.blit(img, img_rect)
-            else:
-                pygame.draw.rect(screen, CARD_BACK_COLOR,
-                                 rect, border_radius=20)
-                pygame.draw.rect(screen, BORDER_COLOR, rect, int(
-                    6 * scale_ratio), border_radius=20)
-                q = card_font.render("?", True, WHITE)
-                qrect = q.get_rect(center=rect.center)
-                screen.blit(q, qrect)
+def load_l1_group():
+    global l1_group, l1_sub, l1_answered, l1_selected
+    l1_sub, g = l1_queue[l1_pos]
+    imgs = list(g["images"])
+    random.shuffle(imgs)
+    l1_group = {**g, "images": imgs}
+    l1_answered, l1_selected = False, None
 
-    bar_h = label_font.get_height() + int(30 * scale_ratio)
-    for label, y in (("Animali:", LAYOUT["grid_y_top"]), ("Habitat:", LAYOUT["grid_y_bottom"])):
-        bar_rect = pygame.Rect(
-            LAYOUT["grid_x"], y - bar_h, LAYOUT["grid_width"], bar_h)
-        s = pygame.Surface((bar_rect.width, bar_rect.height), pygame.SRCALPHA)
-        s.fill(LABEL_BAR_COLOR)
-        screen.blit(s, (bar_rect.x, bar_rect.y))
-        draw_text(label, label_font, WHITE, bar_rect.centerx, bar_rect.centery)
+
+def start_level1_play():
+    global l1_pos, level1_wrong, level_start_time
+    l1_pos, level1_wrong = 0, 0
+    load_l1_group()
+    change_state("L1_PLAY")
+    level_start_time = time.time()
+
+
+def draw_level1():
+    g = l1_group
+    draw_text("Trova l'intruso!", quiz_font, WHITE,
+              SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.235)
+    draw_text("Quale immagine non c'entra con le altre?", label_font,
+              SUBTITLE_COLOR, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.29)
+    radius = int(24 * scale_ratio)
+    for i, im in enumerate(g["images"]):
+        rect = LAYOUT["l1_rects"][i]
+        label = full_name(im["stem"])
+        screen.blit(get_scaled(im["path"], rect.size, label,
+                    mode="cover", radius=radius), rect.topleft)
+        color, width = BORDER_COLOR, max(3, int(6 * scale_ratio))
+        if l1_answered:
+            if im["stem"].lower() == g["intruder"]:
+                color, width = MATCHED_COLOR, max(6, int(12 * scale_ratio))
+            elif i == l1_selected:
+                color, width = WRONG_COLOR, max(6, int(12 * scale_ratio))
+        pygame.draw.rect(screen, color, rect, width, border_radius=radius)
+        draw_wrapped_text(label, label_font, WHITE,
+                          pygame.Rect(rect.x, rect.bottom + int(10 * scale_ratio),
+                                      rect.w, int(90 * scale_ratio)), top_offset=0)
+    if l1_answered:
+        fb = LAYOUT["l1_feedback"]
+        chosen = g["images"][l1_selected]["stem"].lower() == g["intruder"]
+        draw_panel(fb, alpha=170)
+        draw_text("Esatto!" if chosen else "Non proprio!", message_font,
+                  MATCHED_COLOR if chosen else WRONG_COLOR, fb.centerx, fb.top + int(38 * scale_ratio))
+        draw_wrapped_text(g["reason"], label_font, WHITE, fb, top_offset=int(70 * scale_ratio))
 
 
 def handle_level1_click(pos):
-    global can_flip_l1, matched_pairs_l1
-    if not can_flip_l1 or is_revealing_l1:
+    global l1_answered, l1_selected, level1_wrong
+    if l1_answered:
         return
-    for row in game_board:
-        for card in row:
-            if card["rect"].collidepoint(pos) and not card["is_flipped"] and not card["is_matched"]:
-                card["is_flipped"] = True
-                flipped_cards.append(card)
-                if len(flipped_cards) == 2:
-                    can_flip_l1 = False
-                    pygame.time.set_timer(FLIP_BACK_EVENT, 1100)
-                return
+    for i, r in enumerate(LAYOUT["l1_rects"]):
+        if r.collidepoint(pos):
+            l1_answered, l1_selected = True, i
+            if l1_group["images"][i]["stem"].lower() != l1_group["intruder"]:
+                level1_wrong += 1
+            pygame.time.set_timer(ADVANCE_EVENT, L1_FEEDBACK_MS, loops=1)
+            return
+
+
+def advance_level1():
+    global l1_pos, level1_time
+    skip_feedback_time(L1_FEEDBACK_MS)
+    l1_pos += 1
+    if l1_pos >= len(l1_queue):
+        level1_time = time.time() - level_start_time
+        prepare_level2()
+    else:
+        load_l1_group()
+        update_layout()
 
 
 # =====================================================================
-# LEVEL 2 - DRAG & DROP
+# LIVELLO 2 - TRASCINA L'ANIMALE NELLA SUA ZONA
 # =====================================================================
 
-def setup_level2():
-    global habitat_zones, drag_items, matched_pairs_l2, dragging_item, level2_wrong, level_start_time
-    zones = [{"id": p["id"], "name": p["habitat_name"], "icon": p["habitat_icon"], "filled": False, "rect": None}
-             for p in PAIRS]
-    random.shuffle(zones)
-    habitat_zones = zones
+def prepare_level2():
+    global l2_queue
+    l2_queue = []
+    for sub in SUBLEVELS:
+        zones = discover_l2_zones(sub)
+        if zones:
+            l2_queue.append((sub, zones))
+    if l2_queue:
+        change_state("L2_INTRO")
+    else:
+        print("[AVVISO] Nessuna immagine per il livello 2: livello saltato")
+        prepare_level3()
 
-    items = [{"id": p["id"], "name": p["animal_name"], "icon": p["animal_icon"], "placed": False,
-              "dragging": False, "rect": None, "home_rect": None} for p in PAIRS]
-    random.shuffle(items)
-    drag_items = items
 
-    matched_pairs_l2 = 0
-    dragging_item = None
-    level2_wrong = 0
+def load_l2_sublevel():
+    global l2_zones, l2_items, l2_matched, l2_locked, dragging_item, flash_zone
+    sub, zones_data = l2_queue[l2_pos]
+    cap = L2_MAX_PER_ZONE.get(sub)
+    l2_zones, l2_items = [], []
+    for zd in zones_data:
+        l2_zones.append({"key": zd["key"], "label": zone_label(zd["key"]),
+                         "rect": None, "placed": []})
+        chosen = zd["images"]
+        if cap and len(chosen) > cap:
+            chosen = random.sample(chosen, cap)
+        for p in chosen:
+            l2_items.append({"zone": zd["key"], "path": p,
+                             "label": split_name(stem_of(p))[0],
+                             "placed": False, "dragging": False,
+                             "rect": None, "home_rect": None})
+    random.shuffle(l2_items)
+    l2_matched, l2_locked, dragging_item, flash_zone = 0, False, None, None
+
+
+def start_level2_play():
+    global l2_pos, level2_wrong, level_start_time
+    l2_pos, level2_wrong = 0, 0
+    load_l2_sublevel()
     change_state("L2_PLAY")
     level_start_time = time.time()
 
 
-def draw_level2_board():
-    zone_size = LAYOUT["zone_size"]
-    for zone in habitat_zones:
-        rect = zone["rect"]
-        color = MATCHED_COLOR if zone["filled"] else (30, 60, 90)
-        if flash_zone and flash_zone[0] is zone and time.time() < flash_zone[2]:
-            color = flash_zone[1]
-        pygame.draw.rect(screen, color, rect, border_radius=18)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, int(
-            4 * scale_ratio), border_radius=18)
-        icon_size = zone_size - int(70 * scale_ratio)
-        img = get_scaled(zone["icon"], (icon_size, icon_size), zone["name"])
-        img_rect = img.get_rect(
-            center=(rect.centerx, rect.centery - int(15 * scale_ratio)))
-        screen.blit(img, img_rect)
-        draw_text(zone["name"], small_font, WHITE, rect.centerx,
-                  rect.bottom - int(20 * scale_ratio))
-
-    # draw non-dragging items first, dragging item last (always on top)
-    top_item = None
-    item_size = LAYOUT["item_size"]
-    for item in drag_items:
-        if item["placed"]:
-            continue
-        if item.get("dragging"):
-            top_item = item
-            continue
-        _draw_drag_item(item, item_size)
-    if top_item:
-        _draw_drag_item(top_item, item_size)
+def _zone_fallback_color(key):
+    k = key.lower()
+    if k.startswith("aria"):
+        return (135, 190, 225)
+    if "colonna" in k:
+        return (30, 100, 160)
+    if "fondale" in k:
+        return (190, 165, 110)
+    return (60, 90, 130)
 
 
-def _draw_drag_item(item, item_size):
+def _draw_item(item):
     rect = item["rect"]
+    pad = max(3, int(6 * scale_ratio))
     pygame.draw.rect(screen, CARD_BACK_COLOR, rect, border_radius=16)
-    pygame.draw.rect(screen, BORDER_COLOR, rect, int(
-        4 * scale_ratio), border_radius=16)
-    img = get_scaled(item["icon"], (item_size - int(24 * scale_ratio),
-                     item_size - int(24 * scale_ratio)), item["name"])
-    img_rect = img.get_rect(center=rect.center)
-    screen.blit(img, img_rect)
+    inner = pygame.Rect(rect.x + pad, rect.y + pad,
+                        rect.w - 2 * pad, rect.h - 2 * pad)
+    screen.blit(get_scaled(item["path"], inner.size, item["label"], mode="cover",
+                           radius=max(4, int(12 * scale_ratio))), inner.topleft)
+    if rect.w >= 90 * scale_ratio:
+        sh = tiny_font.get_height() + 8
+        strip = pygame.Surface((inner.w, sh), pygame.SRCALPHA)
+        strip.fill((0, 0, 0, 170))
+        screen.blit(strip, (inner.x, inner.bottom - sh))
+        draw_text_fit(item["label"], tiny_font, WHITE,
+                      inner.centerx, inner.bottom - sh / 2, inner.w - 8)
+    pygame.draw.rect(screen, BORDER_COLOR, rect, max(
+        2, int(4 * scale_ratio)), border_radius=16)
+
+
+def draw_level2():
+    sub = l2_queue[l2_pos][0]
+    draw_text(L2_HINTS.get(sub, ""), label_font, SUBTITLE_COLOR,
+              SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.195)
+    scene = LAYOUT["scene"]
+    bg_path = find_image_path(L2_BACKGROUND)
+    has_bg = bg_path is not None
+    if has_bg:
+        screen.blit(get_scaled(bg_path, scene.size, "Sfondo"), scene.topleft)
+    hover_center = dragging_item["rect"].center if dragging_item else None
+
+    for z in l2_zones:
+        r = z["rect"]
+        if not has_bg:
+            pygame.draw.rect(screen, _zone_fallback_color(z["key"]), r)
+        else:
+            draw_overlay(r, (0, 0, 0), 25)
+        border, bw = BORDER_COLOR, 3
+        if flash_zone and flash_zone[0] is z and time.time() < flash_zone[2]:
+            draw_overlay(r, flash_zone[1], 130)
+        elif hover_center and r.collidepoint(hover_center):
+            draw_overlay(r, SELECTED_COLOR, 70)
+            border, bw = SELECTED_COLOR, 6
+        pygame.draw.rect(screen, border, r, bw)
+        # etichetta della zona
+        txt = small_font.render(z["label"], True, WHITE)
+        pill = pygame.Rect(r.x + int(12 * scale_ratio), r.y + int(10 * scale_ratio),
+                           txt.get_width() + int(28 * scale_ratio), txt.get_height() + int(12 * scale_ratio))
+        draw_overlay(pill, (0, 0, 0), 170)
+        screen.blit(txt, txt.get_rect(center=pill.center))
+
+    draw_panel(LAYOUT["tray"], alpha=110)
+    top_item = None
+    for it in l2_items:
+        if it["dragging"]:
+            top_item = it
+        else:
+            _draw_item(it)
+    if top_item:
+        _draw_item(top_item)
 
 
 def handle_level2_mousedown(pos):
     global dragging_item, drag_offset
-    for item in reversed(drag_items):
-        if item["placed"]:
-            continue
-        if item["rect"].collidepoint(pos):
-            dragging_item = item
-            item["dragging"] = True
-            drag_offset = (pos[0] - item["rect"].centerx,
-                           pos[1] - item["rect"].centery)
+    if l2_locked:
+        return
+    for it in reversed(l2_items):
+        if not it["placed"] and it["rect"].collidepoint(pos):
+            dragging_item = it
+            it["dragging"] = True
+            drag_offset = (pos[0] - it["rect"].centerx,
+                           pos[1] - it["rect"].centery)
             return
 
 
 def handle_level2_mousemotion(pos):
     if dragging_item is not None:
-        dragging_item["rect"].centerx = pos[0] - drag_offset[0]
-        dragging_item["rect"].centery = pos[1] - drag_offset[1]
+        dragging_item["rect"].center = (pos[0] - drag_offset[0],
+                                        pos[1] - drag_offset[1])
 
 
 def handle_level2_mouseup(pos):
-    global dragging_item, matched_pairs_l2, level2_wrong, level2_time, flash_zone
+    global dragging_item, l2_matched, level2_wrong, flash_zone, l2_locked
     if dragging_item is None:
         return
-    item = dragging_item
-    item["dragging"] = False
-    dropped_zone = None
-    for zone in habitat_zones:
-        if zone["rect"].colliderect(item["rect"]) and not zone["filled"]:
-            dropped_zone = zone
-            break
-
-    if dropped_zone is not None:
-        if dropped_zone["id"] == item["id"]:
-            dropped_zone["filled"] = True
-            item["placed"] = True
-            item["rect"] = dropped_zone["rect"].copy()
-            matched_pairs_l2 += 1
-            flash_zone = (dropped_zone, MATCHED_COLOR, time.time() + 0.4)
-        else:
-            level2_wrong += 1
-            item["rect"] = item["home_rect"].copy()
-            flash_zone = (dropped_zone, WRONG_COLOR, time.time() + 0.4)
-    else:
-        item["rect"] = item["home_rect"].copy()
-
+    it = dragging_item
     dragging_item = None
+    it["dragging"] = False
+    zone = next((z for z in l2_zones
+                 if z["rect"].collidepoint(it["rect"].center)), None)
+    if zone is None:
+        it["rect"] = it["home_rect"].copy()
+        return
+    if zone["key"] == it["zone"]:
+        it["placed"] = True
+        zone["placed"].append(it)
+        l2_matched += 1
+        flash_zone = (zone, MATCHED_COLOR, time.time() + 0.4)
+        update_layout()
+        if l2_matched == len(l2_items):
+            l2_locked = True
+            pygame.time.set_timer(ADVANCE_EVENT, L2_FEEDBACK_MS, loops=1)
+    else:
+        level2_wrong += 1
+        it["rect"] = it["home_rect"].copy()
+        flash_zone = (zone, WRONG_COLOR, time.time() + 0.4)
 
-    if matched_pairs_l2 == len(PAIRS):
+
+def advance_level2():
+    global l2_pos, level2_time
+    skip_feedback_time(L2_FEEDBACK_MS)
+    l2_pos += 1
+    if l2_pos >= len(l2_queue):
         level2_time = time.time() - level_start_time
-        setup_level3()
+        prepare_level3()
+    else:
+        load_l2_sublevel()
+        update_layout()
 
 
 # =====================================================================
-# LEVEL 3 - QUIZ
+# LIVELLO 3 - QUIZ
 # =====================================================================
 
-def setup_level3():
-    global quiz_set, quiz_index, quiz_answered, quiz_selected, level3_wrong, level_start_time
+def prepare_level3():
+    global quiz_set, quiz_index, quiz_answered, quiz_selected, level3_wrong
     pools = load_quiz_questions()
-
-    easy_q = random.choice(pools.get("easy", [])
-                           ) if pools.get("easy") else None
-    diff_q = random.choice(pools.get("difficult", [])
-                           ) if pools.get("difficult") else None
-
-    selected_pair = []
-    if easy_q:
-        selected_pair.append(easy_q)
-    if diff_q:
-        selected_pair.append(diff_q)
-
-    # Mescola l'ordine della domanda facile e difficile
-    random.shuffle(selected_pair)
-    quiz_set = selected_pair
-
-    for q in quiz_set:
-        order = list(range(len(q["options"])))
-        random.shuffle(order)
-        q["_display_options"] = [q["options"][i] for i in order]
-        q["_correct_display_idx"] = order.index(q["correct"])
-
+    quiz_set = []
+    for sub in SUBLEVELS:
+        pool = pools.get(sub) or []
+        if pool:
+            q = dict(random.choice(pool))
+            q["_sub"] = sub
+            order = list(range(len(q["options"])))
+            random.shuffle(order)
+            q["_display_options"] = [q["options"][i] for i in order]
+            q["_correct_display_idx"] = order.index(q["correct"])
+            quiz_set.append(q)
     quiz_index, quiz_answered, quiz_selected, level3_wrong = 0, False, None, 0
-    change_state("L3_INTRO")
-    level_start_time = time.time()
+    if quiz_set:
+        change_state("L3_INTRO")
+    else:
+        setup_results()
 
 
 def start_level3_play():
@@ -849,7 +1135,6 @@ def draw_level3():
               qrect.centerx, qrect.top + int(24 * scale_ratio))
     draw_wrapped_text(q["q"], quiz_font, WHITE, qrect,
                       top_offset=int(50 * scale_ratio))
-
     for i, opt_text in enumerate(q["_display_options"]):
         rect = LAYOUT["option_rects"][i]
         color = (60, 90, 130)
@@ -865,62 +1150,116 @@ def draw_level3():
                           rect, top_offset=0, vcenter=True)
 
 
-def draw_wrapped_text(text, font, color, rect, top_offset=0, vcenter=False, max_width_ratio=0.92):
-    max_width = rect.width * max_width_ratio
-    words = text.split(" ")
-    lines = []
-    current = ""
-    for w in words:
-        trial = (current + " " + w).strip()
-        if font.size(trial)[0] <= max_width:
-            current = trial
-        else:
-            if current:
-                lines.append(current)
-            current = w
-    if current:
-        lines.append(current)
-
-    line_height = font.get_height() + int(4 * scale_ratio)
-    total_h = line_height * len(lines)
-    if vcenter:
-        start_y = rect.centery - total_h / 2 + line_height / 2
-    else:
-        start_y = rect.top + top_offset + line_height / 2
-    for i, line in enumerate(lines):
-        draw_text(line, font, color, rect.centerx, start_y + i * line_height)
-
-
 def handle_level3_click(pos):
     global quiz_answered, quiz_selected, level3_wrong
     if quiz_answered:
         return
-    for i, rect in enumerate(LAYOUT["option_rects"]):
-        if rect.collidepoint(pos):
-            quiz_answered = True
-            quiz_selected = i
-            q = quiz_set[quiz_index]
+    q = quiz_set[quiz_index]
+    for i in range(len(q["_display_options"])):
+        if LAYOUT["option_rects"][i].collidepoint(pos):
+            quiz_answered, quiz_selected = True, i
             if i != q["_correct_display_idx"]:
                 level3_wrong += 1
-            pygame.time.set_timer(QUIZ_ADVANCE_EVENT, 1300, loops=1)
+            pygame.time.set_timer(ADVANCE_EVENT, L3_FEEDBACK_MS, loops=1)
             return
 
 
 def advance_quiz():
     global quiz_index, quiz_answered, quiz_selected, level3_time
+    skip_feedback_time(L3_FEEDBACK_MS)
     quiz_index += 1
-    quiz_answered = False
-    quiz_selected = None
+    quiz_answered, quiz_selected = False, None
     if quiz_index >= len(quiz_set):
         level3_time = time.time() - level_start_time
         setup_results()
-    else:
-        pass  # stays in L3_PLAY, update_layout not needed (static rects)
+
 
 # =====================================================================
-# RESULTS
+# SALTA LIVELLO
 # =====================================================================
 
+def skip_available():
+    """Il pulsante e' attivo solo quando non c'e' un feedback in corso."""
+    if STATE == "L1_PLAY":
+        return not l1_answered
+    if STATE == "L2_PLAY":
+        return not l2_locked and dragging_item is None
+    if STATE == "L3_PLAY":
+        return not quiz_answered
+    return False
+
+
+def skip_current_level():
+    global level1_time, level2_time, level3_time
+    global level1_wrong, level2_wrong, level3_wrong, dragging_item
+    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    if dragging_item is not None:
+        dragging_item["dragging"] = False
+        dragging_item = None
+    if STATE == "L1_PLAY":
+        skipped_levels.add(1)
+        level1_time, level1_wrong = 0.0, 0
+        prepare_level2()
+    elif STATE == "L2_PLAY":
+        skipped_levels.add(2)
+        level2_time, level2_wrong = 0.0, 0
+        prepare_level3()
+    elif STATE == "L3_PLAY":
+        skipped_levels.add(3)
+        level3_time, level3_wrong = 0.0, 0
+        setup_results()
+
+
+def handle_skip_click(pos):
+    """Ritorna True se il click e' stato consumato dalla UI di skip."""
+    global skip_confirm, skip_confirm_start, level_start_time
+    if skip_confirm:
+        if LAYOUT["skip_yes"].collidepoint(pos):
+            skip_confirm = False
+            skip_current_level()
+        elif LAYOUT["skip_no"].collidepoint(pos):
+            skip_confirm = False
+            level_start_time += time.time() - skip_confirm_start  # pausa
+        return True
+    if skip_available() and LAYOUT["skip_btn"].collidepoint(pos):
+        skip_confirm = True
+        skip_confirm_start = time.time()
+        return True
+    return False
+
+
+def draw_skip_ui():
+    if skip_available():
+        draw_button(LAYOUT["skip_btn"], "Salta livello",
+                    font=small_font, base_color=(215, 215, 215))
+    if skip_confirm:
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 170))
+        screen.blit(overlay, (0, 0))
+        modal = LAYOUT["skip_modal"]
+        pygame.draw.rect(screen, (25, 45, 65), modal, border_radius=20)
+        pygame.draw.rect(screen, BORDER_COLOR, modal, 3, border_radius=20)
+        draw_text("Vuoi saltare questo livello?", message_font, WHITE,
+                  modal.centerx, modal.top + int(50 * scale_ratio))
+        draw_wrapped_text("Il livello varrà zero e in classifica scenderai sotto chi lo completa.",
+                          label_font, SUBTITLE_COLOR, modal, top_offset=int(90 * scale_ratio))
+        draw_button(LAYOUT["skip_yes"], "Sì, salta",
+                    font=small_font, base_color=(230, 120, 120))
+        draw_button(LAYOUT["skip_no"], "Continua a giocare", font=small_font)
+
+
+def on_advance():
+    if STATE == "L1_PLAY":
+        advance_level1()
+    elif STATE == "L2_PLAY":
+        advance_level2()
+    elif STATE == "L3_PLAY":
+        advance_quiz()
+
+
+# =====================================================================
+# RISULTATI
+# =====================================================================
 
 final_score = 0
 total_time_display = 0
@@ -929,12 +1268,15 @@ player_rank = None
 
 def setup_results():
     global leaderboard, final_score, total_time_display, player_rank
-    total_time = level1_time + level2_time + \
-        level3_time + level2_wrong * 5 + level3_wrong * 8
+    total_time = (level1_time + level2_time + level3_time
+                  + level1_wrong * PENALTY_L1 + level2_wrong * PENALTY_L2
+                  + level3_wrong * PENALTY_L3)
     total_time_display = round(total_time, 1)
-    final_score = 1000000 - total_time
+    n_skipped = len(skipped_levels)
+    final_score = 1000000 - total_time - SKIP_RANK_PENALTY * n_skipped
     entry = {"username": player_name, "avatar": AVATARS[selected_avatar_idx]["name"],
-             "final_score": final_score, "time": total_time_display}
+             "final_score": final_score, "time": total_time_display,
+             "skipped": n_skipped}
     leaderboard = [e for e in leaderboard if e["username"] != player_name]
     leaderboard.append(entry)
     save_leaderboard()
@@ -948,61 +1290,63 @@ def draw_results():
               WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.22)
     draw_text(f"Tempo totale: {total_time_display}s", status_font,
               WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.28)
-
+    if skipped_levels:
+        draw_text(f"Livelli saltati: {len(skipped_levels)} (valgono zero)", label_font,
+                  SUBTITLE_COLOR, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.33)
     msg_rect = LAYOUT["message_rect"]
     draw_panel(msg_rect)
     rank_text = f"Posizione in classifica: #{player_rank}" if player_rank else "Posizione in classifica: -"
-    draw_text(rank_text, message_font, WHITE,
-              msg_rect.centerx, msg_rect.centery)
-
+    draw_text(rank_text, message_font, WHITE, msg_rect.centerx, msg_rect.centery)
     draw_leaderboard_box(LAYOUT["leaderboard_rect"])
     draw_button(LAYOUT["play_again_btn"], "Gioca ancora")
 
 
 def reset_game():
     global selected_avatar_idx, player_name, name_active
-    global level1_time, level2_time, level3_time, level2_wrong, level3_wrong
+    global level1_time, level2_time, level3_time
+    global level1_wrong, level2_wrong, level3_wrong
     selected_avatar_idx = None
     player_name = ""
     name_active = True
     level1_time = level2_time = level3_time = 0.0
-    level2_wrong = level3_wrong = 0
+    level1_wrong = level2_wrong = level3_wrong = 0
+    skipped_levels.clear()
+    skip_confirm = False
+    PARTICLES.clear()
     change_state("AVATAR")
 
 
 # =====================================================================
-# AVATAR / NAME SCREEN
+# AVATAR / NOME
 # =====================================================================
 
 def draw_avatar_screen():
-    draw_text("Scegli il tuo avatar e scrivi il tuo nome", subtitle_font, WHITE, SCREEN_WIDTH / 2,
-              SCREEN_HEIGHT * 0.2)
+    draw_text("Scegli il tuo avatar e scrivi il tuo nome", subtitle_font, WHITE,
+              SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.2)
     for i, av in enumerate(AVATARS):
         rect = LAYOUT["avatar_rects"][i]
         selected = (i == selected_avatar_idx)
-        bg_color = SELECTED_COLOR if selected else (35, 65, 95)
-        pygame.draw.rect(screen, bg_color, rect, border_radius=18)
+        pygame.draw.rect(screen, SELECTED_COLOR if selected else (35, 65, 95),
+                         rect, border_radius=18)
         pygame.draw.rect(screen, BORDER_COLOR, rect, int(
             4 * scale_ratio), border_radius=18)
         icon_size = LAYOUT["avatar_size"] - int(70 * scale_ratio)
-        img = get_scaled(av["icon"], (icon_size, icon_size), av["name"])
-        img_rect = img.get_rect(
-            center=(rect.centerx, rect.centery - int(15 * scale_ratio)))
-        screen.blit(img, img_rect)
-        text_color = BLACK if selected else WHITE
-        draw_text(av["name"], small_font, text_color,
+        img = get_scaled(av["icon"], (icon_size, icon_size),
+                         av["name"], mode="fit")
+        screen.blit(img, img.get_rect(
+            center=(rect.centerx, rect.centery - int(15 * scale_ratio))))
+        draw_text(av["name"], small_font, BLACK if selected else WHITE,
                   rect.centerx, rect.bottom - int(24 * scale_ratio))
 
     box = LAYOUT["name_box"]
-    box_color = (255, 255, 255) if name_active else (180, 180, 180)
     pygame.draw.rect(screen, (25, 45, 65), box, border_radius=10)
-    pygame.draw.rect(screen, box_color, box, 3, border_radius=10)
+    pygame.draw.rect(screen, (255, 255, 255) if name_active else (180, 180, 180),
+                     box, 3, border_radius=10)
     display_name = player_name if player_name else "Tocca qui e scrivi il tuo nome"
-    color = WHITE if player_name else (150, 170, 190)
-    draw_text(display_name, status_font, color, box.centerx, box.centery)
-
-    ready = selected_avatar_idx is not None
-    draw_button(LAYOUT["start_btn"], "Inizia!", enabled=ready)
+    draw_text(display_name, status_font, WHITE if player_name else (150, 170, 190),
+              box.centerx, box.centery)
+    draw_button(LAYOUT["start_btn"], "Inizia!",
+                enabled=selected_avatar_idx is not None)
 
 
 def handle_avatar_click(pos):
@@ -1014,8 +1358,7 @@ def handle_avatar_click(pos):
     if LAYOUT["name_box"].collidepoint(pos):
         name_active = True
         return
-    else:
-        name_active = False
+    name_active = False
     if LAYOUT["start_btn"].collidepoint(pos) and selected_avatar_idx is not None:
         start_adventure()
 
@@ -1024,17 +1367,20 @@ def start_adventure():
     global player_name
     if not player_name.strip():
         player_name = "Ospite"
-    setup_level1()
+    prepare_level1()
 
 
 # =====================================================================
-# LEVEL INTRO SCREENS
+# SCHERMATE DI INTRODUZIONE
 # =====================================================================
 
 INTRO_TEXTS = {
-    "L1_INTRO": ("Livello 1 - Memory", "Trova le coppie: abbina ogni animale al suo habitat!"),
-    "L2_INTRO": ("Livello 2 - Trascina!", "Trascina ogni animale nel riquadro del suo habitat."),
-    "L3_INTRO": ("Livello 3 - Quiz", "Rispondi alle domande sul benthos il piu' velocemente possibile!"),
+    "L1_INTRO": ("Livello 1 - Trova l'intruso",
+                 "In ogni gruppo un'immagine non c'entra con le altre: trovala! Prima una sfida facile, poi una difficile."),
+    "L2_INTRO": ("Livello 2 - Trascina!",
+                 "Trascina ogni animale nella zona in cui vive: aria, colonna d'acqua o fondale. Poi si sale di difficoltà!"),
+    "L3_INTRO": ("Livello 3 - Quiz",
+                 "Rispondi alle domande sul mare il più velocemente possibile!"),
 }
 
 
@@ -1042,18 +1388,17 @@ def draw_level_intro():
     title, subtitle = INTRO_TEXTS[STATE]
     draw_text(title, title_font, WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.4)
     draw_wrapped_text(subtitle, status_font, SUBTITLE_COLOR,
-                      pygame.Rect(SCREEN_WIDTH * 0.2, SCREEN_HEIGHT *
-                                  0.48, SCREEN_WIDTH * 0.6, SCREEN_HEIGHT * 0.15),
-                      top_offset=0)
+                      pygame.Rect(SCREEN_WIDTH * 0.2, SCREEN_HEIGHT * 0.48,
+                                  SCREEN_WIDTH * 0.6, SCREEN_HEIGHT * 0.2))
     draw_button(LAYOUT["continue_btn"], "Vai!")
 
 
 def handle_level_intro_click(pos):
     if LAYOUT["continue_btn"].collidepoint(pos):
         if STATE == "L1_INTRO":
-            setup_level1()
+            start_level1_play()
         elif STATE == "L2_INTRO":
-            setup_level2()
+            start_level2_play()
         elif STATE == "L3_INTRO":
             start_level3_play()
 
@@ -1064,9 +1409,10 @@ def handle_level_intro_click(pos):
 
 def main():
     global SCREEN_WIDTH, SCREEN_HEIGHT, screen, leaderboard, player_name, name_active
-    global can_flip_l1, is_revealing_l1, matched_pairs_l1, level1_time, level_start_time
+    global PARTICLE_ICONS
 
     leaderboard = load_leaderboard()
+    PARTICLE_ICONS = collect_particle_icons()
     initialize_fonts()
     change_state("AVATAR")
 
@@ -1076,6 +1422,9 @@ def main():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                running = False
+
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
 
             elif event.type == pygame.VIDEORESIZE:
@@ -1092,34 +1441,11 @@ def main():
                 elif event.key == pygame.K_RETURN:
                     if selected_avatar_idx is not None:
                         start_adventure()
-                elif len(player_name) < 18 and event.unicode.isprintable():
+                elif event.unicode and len(player_name) < 18 and event.unicode.isprintable():
                     player_name += event.unicode
 
-            elif event.type == REVEAL_END_EVENT:
-                is_revealing_l1 = False
-                can_flip_l1 = True
-                level_start_time = time.time()
-                pygame.time.set_timer(REVEAL_END_EVENT, 0)
-                change_state("L1_PLAY")
-
-            elif event.type == FLIP_BACK_EVENT:
-                if len(flipped_cards) == 2:
-                    c1, c2 = flipped_cards
-                    if c1["pair_id"] == c2["pair_id"] and c1["kind"] != c2["kind"]:
-                        c1["is_matched"] = True
-                        c2["is_matched"] = True
-                        matched_pairs_l1 += 1
-                    c1["is_flipped"] = False
-                    c2["is_flipped"] = False
-                flipped_cards.clear()
-                can_flip_l1 = True
-                pygame.time.set_timer(FLIP_BACK_EVENT, 0)
-                if matched_pairs_l1 == len(PAIRS):
-                    level1_time = time.time() - level_start_time
-                    change_state("L2_INTRO")
-
-            elif event.type == QUIZ_ADVANCE_EVENT:
-                advance_quiz()
+            elif event.type == ADVANCE_EVENT:
+                on_advance()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 pos = event.pos
@@ -1143,9 +1469,6 @@ def main():
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and STATE == "L2_PLAY":
                 handle_level2_mouseup(event.pos)
 
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
-
         # --- Drawing ---
         draw_background()
 
@@ -1155,14 +1478,14 @@ def main():
         elif STATE in ("L1_INTRO", "L2_INTRO", "L3_INTRO"):
             draw_header()
             draw_level_intro()
-        elif STATE in ("L1_REVEAL", "L1_PLAY"):
-            draw_header("Livello 1/3")
-            draw_level1_board()
+        elif STATE == "L1_PLAY":
+            draw_header(f"Livello 1/3 - {SUB_LABEL[current_sub()]}")
+            draw_level1()
         elif STATE == "L2_PLAY":
-            draw_header("Livello 2/3")
-            draw_level2_board()
+            draw_header(f"Livello 2/3 - {SUB_LABEL[current_sub()]}")
+            draw_level2()
         elif STATE == "L3_PLAY":
-            draw_header("Livello 3/3")
+            draw_header(f"Livello 3/3 - {SUB_LABEL[current_sub()]}")
             draw_level3()
         elif STATE == "RESULTS":
             draw_header()
