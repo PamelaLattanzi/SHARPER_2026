@@ -147,9 +147,9 @@ SUB_LABEL = {"easy": "Facile", "difficult": "Difficile"}
 MAX_NAME_LEN = 7
 
 # Penalita' (secondi aggiunti al tempo per ogni errore)
-PENALTY_L1 = 8
+PENALTY_L1 = 5
 PENALTY_L2 = 5
-PENALTY_L3 = 8
+PENALTY_L3 = 3
 
 # Livello saltato: vale zero (nessun tempo). Siccome la classifica e' a tempo,
 # saltare non deve convenire: ogni livello saltato fa scendere il punteggio

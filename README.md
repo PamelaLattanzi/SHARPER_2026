@@ -1,4 +1,4 @@
-# Il Fondale Misterioso - CNR Sharper Night 2026
+# Apprendista Biologo Marino: Missione Mare - CNR Sharper Night 2026
 
 Gioco Pygame sul benthos per lo stand del CNR ad Ancona (25 settembre 2026).
 Il visitatore sceglie un avatar, scrive il proprio nome e affronta 3 livelli
