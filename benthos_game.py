@@ -1,6 +1,6 @@
 """
 =====================================================================
- IL FONDALE MISTERIOSO - Gioco sul benthos per Sharper Night 2026
+ Apprendista Biologo Marino: Missione Mare - Gioco sul benthos per Sharper Night 2026
  CNR - Stand del centro citta di Ancona - 25 settembre 2026
 =====================================================================
 
@@ -52,7 +52,8 @@ SCREEN_WIDTH = infoObject.current_w
 SCREEN_HEIGHT = infoObject.current_h
 screen = pygame.display.set_mode(
     (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
-pygame.display.set_caption("Il Fondale Misterioso - Sharper Night 2026")
+pygame.display.set_caption(
+    "Apprendista Biologo Marino: Missione Mare - Sharper Night 2026")
 
 INITIAL_SCREEN_WIDTH = 2400
 INITIAL_SCREEN_HEIGHT = 1200
@@ -182,7 +183,7 @@ INTRUDERS = {
     ("easy", "group2"): ("delfino", "Il delfino è un mammifero: gli altri sono pesci."),
     ("easy", "group3"): ("occhiata", "L'occhiata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
     ("easy", "group4"): ("riccio", "Il riccio di mare è un invertebrato: gli altri sono pesci."),
-    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile e deve uscire fuori dall'acqua per respirare."),
+    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile: gli altri sono crostacei."),
     ("difficult", "group1"): ("granchio_blu", "Il granchio blu è una specie aliena, non nativa del Mediterraneo."),
     ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: le altre sono alghe."),
     ("difficult", "group3"): ("cystoseira", "La Cystoseira è un'alga: gli altri sono animali."),
@@ -570,7 +571,7 @@ def draw_background():
 
 
 def draw_header(level_label=""):
-    draw_text("Il Fondale Misterioso", title_font, WHITE,
+    draw_text("Apprendista Biologo Marino: Missione Mare", title_font, WHITE,
               SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.07)
     draw_text("Sharper Night 2026 - CNR", subtitle_font,
               SUBTITLE_COLOR, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.13)
@@ -1372,7 +1373,7 @@ def setup_results():
 
 
 def draw_results():
-    draw_text("Hai completato il fondale misterioso!", message_font,
+    draw_text("Hai completato Apprendista Biologo Marino: Missione Mare!", message_font,
               WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.22)
     draw_text(f"Tempo totale: {total_time_display}s", status_font,
               WHITE, SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.28)
