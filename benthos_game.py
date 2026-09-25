@@ -70,11 +70,56 @@ MATCHED_COLOR = (72, 187, 120)
 WRONG_COLOR = (220, 90, 90)
 BUTTON_COLOR = (255, 165, 0)
 BUTTON_COLOR_DISABLED = (120, 110, 90)
-BORDER_COLOR = (255, 255, 255)
+BORDER_COLOR = (232, 236, 240)
 SELECTED_COLOR = (255, 215, 0)
 
 # --- Custom events ---
 ADVANCE_EVENT = pygame.USEREVENT + 1   # fine del feedback -> prossima sfida
+
+# =====================================================================
+# FONT PIU' ACCATTIVANTE (con fallback automatico al font di sistema)
+# =====================================================================
+# Prova, in ordine, alcuni font "amichevoli" spesso presenti sul sistema;
+# se nessuno e' installato usa il font di default di pygame senza errori.
+PREFERRED_FONT_NAMES = [
+    "baloo2", "poppins", "quicksand", "nunito", "varelaround",
+    "segoeuisemibold", "segoeui", "trebuchetms", "comicsansms",
+    "dejavusans", "verdana", "arial",
+]
+_FONT_CACHE = {}
+_font_path_cache = {"resolved": False, "path": None}
+
+
+def _resolve_font_path():
+    if not _font_path_cache["resolved"]:
+        _font_path_cache["resolved"] = True
+        for name in PREFERRED_FONT_NAMES:
+            try:
+                path = pygame.font.match_font(name)
+            except Exception:
+                path = None
+            if path:
+                _font_path_cache["path"] = path
+                break
+    return _font_path_cache["path"]
+
+
+def load_font(size, bold=False):
+    size = max(1, int(size))
+    key = (size, bold)
+    if key in _FONT_CACHE:
+        return _FONT_CACHE[key]
+    path = _resolve_font_path()
+    try:
+        f = pygame.font.Font(path, size) if path else pygame.font.Font(None, size)
+    except Exception:
+        f = pygame.font.Font(None, size)
+    try:
+        f.set_bold(bold)
+    except Exception:
+        pass
+    _FONT_CACHE[key] = f
+    return f
 
 # =====================================================================
 # CONFIGURAZIONE
@@ -96,17 +141,13 @@ LEADERBOARD_FILE = os.path.join(BASE_DIR, "leaderboard.json")
 SUBLEVELS = ("easy", "difficult")
 SUB_LABEL = {"easy": "Facile", "difficult": "Difficile"}
 
+# Numero massimo di caratteri per il nome del giocatore
+MAX_NAME_LEN = 7
+
 # Penalita' (secondi aggiunti al tempo per ogni errore)
 PENALTY_L1 = 8
 PENALTY_L2 = 5
 PENALTY_L3 = 8
-
-# Se il giocatore salta un livello, a quel livello viene assegnato questo
-# tempo "peggiore possibile" invece del tempo impiegato, cosi' il livello
-# saltato pesa sul punteggio finale come se fosse stato un fallimento
-# totale (in pratica: punteggio ~ zero per quel livello). Alzalo se vuoi
-# che saltare pesi ancora di piu'.
-SKIP_PENALTY_SECONDS = 120
 
 # Livello saltato: vale zero (nessun tempo). Siccome la classifica e' a tempo,
 # saltare non deve convenire: ogni livello saltato fa scendere il punteggio
@@ -356,7 +397,7 @@ def make_fallback_surface(size, label):
     pygame.draw.rect(surf, color, (0, 0, w, h), border_radius=radius)
     pygame.draw.rect(surf, WHITE, (0, 0, w, h), max(
         2, int(min(w, h) * 0.02)), border_radius=radius)
-    f = pygame.font.Font(None, max(10, int(min(w, h) * 0.32)))
+    f = load_font(max(10, int(min(w, h) * 0.32)), bold=True)
     words = [wd for wd in label.split() if wd]
     letters = "".join(wd[0] for wd in words[:2]).upper() if words else "?"
     txt = f.render(letters, True, WHITE)
@@ -422,17 +463,17 @@ def initialize_fonts():
                       SCREEN_HEIGHT / INITIAL_SCREEN_HEIGHT)
     scale_ratio = max(scale_ratio, 0.3)
 
-    title_font = pygame.font.Font(None, int(100 * scale_ratio))
-    subtitle_font = pygame.font.Font(None, int(70 * scale_ratio))
-    status_font = pygame.font.Font(None, int(70 * scale_ratio))
-    label_font = pygame.font.Font(None, int(50 * scale_ratio))
-    leaderboard_font = pygame.font.Font(None, int(46 * scale_ratio))
-    message_font = pygame.font.Font(None, int(56 * scale_ratio))
-    button_font = pygame.font.Font(None, int(60 * scale_ratio))
-    quiz_font = pygame.font.Font(None, int(70 * scale_ratio))
-    option_font = pygame.font.Font(None, int(54 * scale_ratio))
-    small_font = pygame.font.Font(None, int(38 * scale_ratio))
-    tiny_font = pygame.font.Font(None, int(28 * scale_ratio))
+    title_font = load_font(int(100 * scale_ratio), bold=True)
+    subtitle_font = load_font(int(70 * scale_ratio))
+    status_font = load_font(int(70 * scale_ratio))
+    label_font = load_font(int(50 * scale_ratio))
+    leaderboard_font = load_font(int(46 * scale_ratio))
+    message_font = load_font(int(56 * scale_ratio), bold=True)
+    button_font = load_font(int(60 * scale_ratio), bold=True)
+    quiz_font = load_font(int(70 * scale_ratio), bold=True)
+    option_font = load_font(int(54 * scale_ratio))
+    small_font = load_font(int(38 * scale_ratio))
+    tiny_font = load_font(int(28 * scale_ratio))
 
 
 def draw_text(text, font, color, x, y, align="center"):
@@ -497,7 +538,7 @@ def draw_button(rect, text, font=None, enabled=True, base_color=None):
     font = font or button_font
     color = base_color or (BUTTON_COLOR if enabled else BUTTON_COLOR_DISABLED)
     pygame.draw.rect(screen, color, rect, border_radius=14)
-    pygame.draw.rect(screen, BORDER_COLOR, rect, 3, border_radius=14)
+    pygame.draw.rect(screen, BORDER_COLOR, rect, 2, border_radius=14)
     draw_text(text, font, BLACK, rect.centerx, rect.centery)
     return rect
 
@@ -572,21 +613,47 @@ def get_player_rank(username, score):
     return None
 
 
+def resolve_avatar_icon(entry):
+    """Ritorna (percorso_icona, etichetta) per una voce di classifica.
+    Gestisce anche le voci salvate da versioni precedenti del gioco, che
+    non avevano 'avatar_icon': in quel caso cerca l'avatar per id/nome."""
+    label = entry.get("avatar", "")
+    path = entry.get("avatar_icon")
+    if not path:
+        match = None
+        aid = entry.get("avatar_id")
+        if aid:
+            match = next((a for a in AVATARS if a["id"] == aid), None)
+        if not match and label:
+            match = next(
+                (a for a in AVATARS if a["name"].lower() == label.lower()), None)
+        if match:
+            path = match["icon"]
+    return path or "__avatar_sconosciuto__", (label or "?")
+
+
 def draw_leaderboard_box(rect):
     draw_panel(rect)
     draw_text("Classifica:", status_font, WHITE,
               rect.centerx, rect.top + 35 * scale_ratio)
     sorted_lb = sorted(leaderboard, key=lambda x: x.get(
         "final_score", 0), reverse=True)
+    icon_size = int(leaderboard_font.get_height() * 0.9)
+    row_h = icon_size + int(10 * scale_ratio)
+    text_x = rect.left + 25 * scale_ratio + icon_size + int(12 * scale_ratio)
     y = rect.top + 90 * scale_ratio
     any_skipped = False
     for i, entry in enumerate(sorted_lb[:5]):
         sk = entry.get("skipped", 0)
         suffix = f" (salt. {sk})" if sk else ""
         any_skipped = any_skipped or bool(sk)
+        icon_path, icon_label = resolve_avatar_icon(entry)
+        icon = get_scaled(icon_path, (icon_size, icon_size), icon_label,
+                          mode="cover", radius=max(4, int(icon_size * 0.22)))
+        screen.blit(icon, (rect.left + 25 * scale_ratio, y - icon_size / 2))
         draw_text(f"{i + 1}. {entry['username']} - {entry.get('time', 'N/A')}s{suffix}",
-                  leaderboard_font, WHITE, rect.left + 25 * scale_ratio, y, align="left")
-        y += 46 * scale_ratio
+                  leaderboard_font, WHITE, text_x, y, align="left")
+        y += row_h
     if any_skipped:
         draw_text("salt. = livelli saltati", tiny_font, SUBTITLE_COLOR,
                   rect.left + 25 * scale_ratio, rect.bottom - 22 * scale_ratio, align="left")
@@ -710,11 +777,6 @@ def update_layout():
     LAYOUT = {}
     W, H = SCREEN_WIDTH, SCREEN_HEIGHT
 
-    if STATE in ("L1_PLAY", "L2_PLAY", "L3_PLAY"):
-        btn_w, btn_h = int(230 * scale_ratio), int(56 * scale_ratio)
-        LAYOUT["skip_btn"] = pygame.Rect(
-            W - btn_w - int(24 * scale_ratio), int(20 * scale_ratio), btn_w, btn_h)
-
     if STATE == "AVATAR":
         card_size = int(260 * scale_ratio)
         margin = int(40 * scale_ratio)
@@ -728,12 +790,12 @@ def update_layout():
                         grid_y + (i // cols) * (card_size + margin), card_size, card_size)
             for i in range(len(AVATARS))]
         LAYOUT["avatar_size"] = card_size
-        box_w, box_h = int(W * 0.28), int(70 * scale_ratio)
+        box_w, box_h = int(W * 0.16), int(70 * scale_ratio)
         LAYOUT["name_box"] = pygame.Rect(
             W / 2 - box_w / 2, grid_y + grid_h + int(60 * scale_ratio), box_w, box_h)
         btn_w, btn_h = int(280 * scale_ratio), int(80 * scale_ratio)
         LAYOUT["start_btn"] = pygame.Rect(
-            W / 2 - btn_w / 2, LAYOUT["name_box"].bottom + int(40 * scale_ratio), btn_w, btn_h)
+            W / 2 - btn_w / 2, LAYOUT["name_box"].bottom + int(70 * scale_ratio), btn_w, btn_h)
 
     elif STATE in ("L1_INTRO", "L2_INTRO", "L3_INTRO"):
         btn_w, btn_h = int(320 * scale_ratio), int(90 * scale_ratio)
@@ -888,7 +950,7 @@ def draw_level1():
         label = full_name(im["stem"])
         screen.blit(get_scaled(im["path"], rect.size, label,
                     mode="cover", radius=radius), rect.topleft)
-        color, width = BORDER_COLOR, max(3, int(6 * scale_ratio))
+        color, width = BORDER_COLOR, max(2, int(3 * scale_ratio))
         if l1_answered:
             if im["stem"].lower() == g["intruder"]:
                 color, width = MATCHED_COLOR, max(6, int(12 * scale_ratio))
@@ -1005,7 +1067,7 @@ def _draw_item(item):
         draw_text_fit(item["label"], tiny_font, WHITE,
                       inner.centerx, inner.bottom - sh / 2, inner.w - 8)
     pygame.draw.rect(screen, BORDER_COLOR, rect, max(
-        2, int(4 * scale_ratio)), border_radius=16)
+        1, int(2 * scale_ratio)), border_radius=16)
 
 
 def draw_level2():
@@ -1025,7 +1087,7 @@ def draw_level2():
             pygame.draw.rect(screen, _zone_fallback_color(z["key"]), r)
         else:
             draw_overlay(r, (0, 0, 0), 25)
-        border, bw = BORDER_COLOR, 3
+        border, bw = BORDER_COLOR, 2
         if flash_zone and flash_zone[0] is z and time.time() < flash_zone[2]:
             draw_overlay(r, flash_zone[1], 130)
         elif hover_center and r.collidepoint(hover_center):
@@ -1156,8 +1218,8 @@ def draw_level3():
             elif i == quiz_selected:
                 color = WRONG_COLOR
         pygame.draw.rect(screen, color, rect, border_radius=14)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, int(
-            3 * scale_ratio), border_radius=14)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, max(1, int(
+            2 * scale_ratio)), border_radius=14)
         draw_wrapped_text(opt_text, option_font, WHITE,
                           rect, top_offset=0, vcenter=True)
 
@@ -1250,7 +1312,7 @@ def draw_skip_ui():
         screen.blit(overlay, (0, 0))
         modal = LAYOUT["skip_modal"]
         pygame.draw.rect(screen, (25, 45, 65), modal, border_radius=20)
-        pygame.draw.rect(screen, BORDER_COLOR, modal, 3, border_radius=20)
+        pygame.draw.rect(screen, BORDER_COLOR, modal, 2, border_radius=20)
         draw_text("Vuoi saltare questo livello?", message_font, WHITE,
                   modal.centerx, modal.top + int(50 * scale_ratio))
         draw_wrapped_text("Il livello varrà zero e in classifica scenderai sotto chi lo completa.",
@@ -1267,41 +1329,6 @@ def on_advance():
         advance_level2()
     elif STATE == "L3_PLAY":
         advance_quiz()
-
-
-# --- Salta livello (bottone "Salta livello") -------------------------
-# Il livello saltato non viene giocato: gli si assegna SKIP_PENALTY_SECONDS
-# al posto del tempo impiegato, cosi' pesa come un fallimento totale sul
-# punteggio finale, e si passa subito al livello successivo.
-
-def skip_level1():
-    global level1_time
-    pygame.time.set_timer(ADVANCE_EVENT, 0)
-    level1_time = SKIP_PENALTY_SECONDS
-    prepare_level2()
-
-
-def skip_level2():
-    global level2_time
-    pygame.time.set_timer(ADVANCE_EVENT, 0)
-    level2_time = SKIP_PENALTY_SECONDS
-    prepare_level3()
-
-
-def skip_level3():
-    global level3_time
-    pygame.time.set_timer(ADVANCE_EVENT, 0)
-    level3_time = SKIP_PENALTY_SECONDS
-    setup_results()
-
-
-def handle_skip_click():
-    if STATE == "L1_PLAY":
-        skip_level1()
-    elif STATE == "L2_PLAY":
-        skip_level2()
-    elif STATE == "L3_PLAY":
-        skip_level3()
 
 
 # =====================================================================
@@ -1321,7 +1348,9 @@ def setup_results():
     total_time_display = round(total_time, 1)
     n_skipped = len(skipped_levels)
     final_score = 1000000 - total_time - SKIP_RANK_PENALTY * n_skipped
-    entry = {"username": player_name, "avatar": AVATARS[selected_avatar_idx]["name"],
+    chosen_avatar = AVATARS[selected_avatar_idx]
+    entry = {"username": player_name, "avatar": chosen_avatar["name"],
+             "avatar_id": chosen_avatar["id"], "avatar_icon": chosen_avatar["icon"],
              "final_score": final_score, "time": total_time_display,
              "skipped": n_skipped}
     leaderboard = [e for e in leaderboard if e["username"] != player_name]
@@ -1352,6 +1381,7 @@ def reset_game():
     global selected_avatar_idx, player_name, name_active
     global level1_time, level2_time, level3_time
     global level1_wrong, level2_wrong, level3_wrong
+    global skip_confirm, skip_confirm_start
     selected_avatar_idx = None
     player_name = ""
     name_active = True
@@ -1359,6 +1389,7 @@ def reset_game():
     level1_wrong = level2_wrong = level3_wrong = 0
     skipped_levels.clear()
     skip_confirm = False
+    skip_confirm_start = 0.0
     PARTICLES.clear()
     change_state("AVATAR")
 
@@ -1375,8 +1406,8 @@ def draw_avatar_screen():
         selected = (i == selected_avatar_idx)
         pygame.draw.rect(screen, SELECTED_COLOR if selected else (35, 65, 95),
                          rect, border_radius=18)
-        pygame.draw.rect(screen, BORDER_COLOR, rect, int(
-            4 * scale_ratio), border_radius=18)
+        pygame.draw.rect(screen, BORDER_COLOR, rect, max(1, int(
+            2 * scale_ratio)), border_radius=18)
         icon_size = LAYOUT["avatar_size"] - int(70 * scale_ratio)
         img = get_scaled(av["icon"], (icon_size, icon_size),
                          av["name"], mode="fit")
@@ -1386,12 +1417,14 @@ def draw_avatar_screen():
                   rect.centerx, rect.bottom - int(24 * scale_ratio))
 
     box = LAYOUT["name_box"]
-    pygame.draw.rect(screen, (25, 45, 65), box, border_radius=10)
-    pygame.draw.rect(screen, (255, 255, 255) if name_active else (180, 180, 180),
-                     box, 3, border_radius=10)
-    display_name = player_name if player_name else "Tocca qui e scrivi il tuo nome"
-    draw_text(display_name, status_font, WHITE if player_name else (150, 170, 190),
-              box.centerx, box.centery)
+    pygame.draw.rect(screen, (25, 45, 65), box, border_radius=14)
+    pygame.draw.rect(screen, (255, 255, 255) if name_active else (150, 160, 175),
+                     box, max(1, int(2 * scale_ratio)), border_radius=14)
+    display_name = player_name if player_name else "Nome"
+    draw_text_fit(display_name, status_font, WHITE if player_name else (150, 170, 190),
+                  box.centerx, box.centery, box.width - int(24 * scale_ratio))
+    draw_text(f"max {MAX_NAME_LEN} caratteri", tiny_font, SUBTITLE_COLOR,
+              box.centerx, box.bottom + int(22 * scale_ratio))
     draw_button(LAYOUT["start_btn"], "Inizia!",
                 enabled=selected_avatar_idx is not None)
 
@@ -1488,7 +1521,7 @@ def main():
                 elif event.key == pygame.K_RETURN:
                     if selected_avatar_idx is not None:
                         start_adventure()
-                elif event.unicode and len(player_name) < 18 and event.unicode.isprintable():
+                elif event.unicode and len(player_name) < MAX_NAME_LEN and event.unicode.isprintable():
                     player_name += event.unicode
 
             elif event.type == ADVANCE_EVENT:
@@ -1500,8 +1533,8 @@ def main():
                     handle_avatar_click(pos)
                 elif STATE in ("L1_INTRO", "L2_INTRO", "L3_INTRO"):
                     handle_level_intro_click(pos)
-                elif STATE in ("L1_PLAY", "L2_PLAY", "L3_PLAY") and LAYOUT["skip_btn"].collidepoint(pos):
-                    handle_skip_click()
+                elif STATE in PLAY_STATES and handle_skip_click(pos):
+                    pass  # click consumato dal bottone/dialogo "Salta livello"
                 elif STATE == "L1_PLAY":
                     handle_level1_click(pos)
                 elif STATE == "L2_PLAY":
@@ -1530,18 +1563,15 @@ def main():
         elif STATE == "L1_PLAY":
             draw_header(f"Livello 1/3 - {SUB_LABEL[current_sub()]}")
             draw_level1()
-            draw_button(LAYOUT["skip_btn"], "Salta livello", font=small_font,
-                       base_color=(90, 90, 90))
+            draw_skip_ui()
         elif STATE == "L2_PLAY":
             draw_header(f"Livello 2/3 - {SUB_LABEL[current_sub()]}")
             draw_level2()
-            draw_button(LAYOUT["skip_btn"], "Salta livello", font=small_font,
-                       base_color=(90, 90, 90))
+            draw_skip_ui()
         elif STATE == "L3_PLAY":
             draw_header(f"Livello 3/3 - {SUB_LABEL[current_sub()]}")
             draw_level3()
-            draw_button(LAYOUT["skip_btn"], "Salta livello", font=small_font,
-                       base_color=(90, 90, 90))
+            draw_skip_ui()
         elif STATE == "RESULTS":
             draw_header()
             draw_results()

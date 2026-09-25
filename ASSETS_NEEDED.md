@@ -78,7 +78,7 @@ mettilo a `None` per usarli sempre tutti.
   `placeholder/level3_quiz/questions_level3.json`.
 - Se vuoi cambiare le fasce (altezza) delle zone del livello 2 sullo
   sfondo, modifica `ZONE_BANDS` in cima a `benthos_game.py`.
-- Il bottone "Salta livello" (in alto a destra durante ogni livello) fa
-  passare al livello successivo senza giocarlo, assegnando una
-  penalita' fissa (`SKIP_PENALTY_SECONDS`, cima al file) che rende il
-  punteggio di quel livello sostanzialmente nullo.
+- Il bottone "Salta livello" (in alto a sinistra durante ogni livello,
+  con richiesta di conferma) fa passare al livello successivo senza
+  giocarlo, assegnando una penalita' molto marcata sul punteggio finale
+  (`SKIP_RANK_PENALTY`, cima al file) che lo rende sostanzialmente nullo.

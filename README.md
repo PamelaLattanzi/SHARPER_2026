@@ -8,7 +8,8 @@ classifica con tempo totale.
 
 ## Come si gioca
 
-1. **Avatar + nome**: si sceglie un'icona tra 6 e si scrive il proprio nome.
+1. **Avatar + nome**: si sceglie un'icona tra 6 e si scrive il proprio nome
+   (massimo 7 caratteri, per restare leggibile anche in classifica).
 2. **Livello 1 - Trova l'intruso**: in un gruppo di 4 immagini, una non
    c'entra con le altre. Prima una sfida facile, poi una difficile.
    Dopo la risposta viene mostrata la spiegazione per qualche secondo
@@ -19,17 +20,20 @@ classifica con tempo totale.
    (le due interfacce: aria-acqua e acqua-fondale).
 4. **Livello 3 - Quiz**: una domanda facile e una difficile, estratte a
    caso dall'elenco del file JSON.
-5. **Risultati**: tempo totale (con penalita' per gli errori e per gli
-   eventuali livelli saltati), posizione in classifica, e l'animazione
+5. **Risultati**: tempo totale (con penalita' per gli errori), posizione
+   in classifica — con l'avatar scelto accanto al nome — e l'animazione
    finale con gli animaletti che "esplodono" a schermo.
 
-In ogni livello e' presente un bottone **"Salta livello"** in alto a
-destra, per chi vuole passare oltre (ad esempio se la fila e' lunga o il
-visitatore non e' interessato a quella prova). Il livello saltato non
-viene giocato e riceve un tempo-penalita' fisso molto alto
-(`SKIP_PENALTY_SECONDS` in cima al file, di default 120s), cosi' pesa sul
-punteggio finale come un fallimento totale di quel livello (punteggio
-sostanzialmente azzerato per quella parte).
+In ogni livello e' presente un bottone **"Salta livello"** (in alto a
+sinistra, sotto il nome del giocatore), per chi vuole passare oltre — ad
+esempio se la fila e' lunga o il visitatore non e' interessato a quella
+prova. Il bottone chiede prima conferma ("Sì, salta" / "Continua a
+giocare"), cosi' non si salta per sbaglio con un click. Il livello
+confermato come saltato non viene giocato e il punteggio finale viene
+abbassato in modo molto marcato (`SKIP_RANK_PENALTY` in cima al file, di
+default 100000 "secondi equivalenti"), cosi' chi salta finisce comunque
+sotto chiunque abbia completato quel livello: in pratica vale zero. La
+classifica segnala quante prove ha saltato ogni giocatore.
 
 Il punteggio finale e la classifica sono salvati in `leaderboard.json`,
 nella stessa cartella dello script, e persistono tra una partita e l'altra.
@@ -117,7 +121,19 @@ ciascuna lista.
 
 ## Personalizzare avatar, penalita' e tempo di feedback
 
-Tutte le costanti principali (avatar, penalita' per errore, penalita' per
-un livello saltato, durata del feedback dopo una risposta) sono in cima
-al file `benthos_game.py` e si possono modificare senza toccare il resto
-del codice.
+Tutte le costanti principali (avatar, lunghezza massima del nome,
+penalita' per errore, penalita' per un livello saltato, durata del
+feedback dopo una risposta) sono in cima al file `benthos_game.py` e si
+possono modificare senza toccare il resto del codice.
+
+## Font e grafica
+
+Il gioco cerca automaticamente, in ordine di preferenza, alcuni font
+"amichevoli" installati sul sistema (elenco `PREFERRED_FONT_NAMES` in
+cima al file: Poppins, Nunito, Segoe UI, Trebuchet MS, Comic Sans, ecc.)
+e usa il primo che trova; se nessuno e' installato usa senza errori il
+font di default di pygame. Per usare un font specifico (ad esempio un
+.ttf scaricato per l'occasione) basta aggiungerne il nome in cima alla
+lista `PREFERRED_FONT_NAMES`, purche' sia installato come font di
+sistema.
+
