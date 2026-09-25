@@ -47,17 +47,19 @@ dal gioco in automatico.
 
 ## placeholder/level2_trascinamento/
 
-- **sfondo.jpg** — immagine unica della scena con le tre fasce
-  (aria/interfaccia aria-acqua in alto, colonna d'acqua al centro,
-  fondale/interfaccia acqua-fondale in basso). Su questa immagine
-  vengono disegnate le zone di trascinamento.
+- **sfondo.jpg** — immagine della scena per la sfida FACILE, con le tre
+  fasce (aria/spiaggia in alto, colonna d'acqua al centro, fondale in
+  basso). Su questa immagine vengono disegnate le zone di trascinamento.
+- **sfondo2.jpg** — immagine della scena per la sfida DIFFICILE, con due
+  sole fasce (aria-acqua in alto, acqua-fondale in basso) — stessa
+  identica meccanica della sfida facile, solo con due zone invece di tre.
 
-### easy/ (aria/spiaggia - colonna d'acqua - fondale)
+### easy/ (aria/spiaggia - colonna d'acqua - fondale, su sfondo.jpg)
 - aria_spiaggia -> berta.jpg, cormorano.jpg, gabbiano.jpg
 - colonna_acqua -> delfino.jpg, medusa.jpg, occhiata.jpg, squalo_bianco.jpg
 - fondale -> canestrello.jpg, cetriolo_di_mare.jpg, gorgonia.jpg, polichete_Diopatra_neapolitana.jpg, posidonia.jpg, riccio.jpg, spirografo.jpg, tellina.jpg
 
-### difficult/ (le due interfacce)
+### difficult/ (aria-acqua - acqua-fondale, su sfondo2.jpg)
 - acqua_fondale -> granchio_blu.jpg, mazzancolla.jpg, murena.jpg, polpo.jpg, seppia.jpg, sogliola.jpg, triglia.jpg
 - aria_acqua -> caravella_portoghese.jpg, foca_monaca.jpg, tartaruga.jpg, velella.jpg
 
@@ -82,3 +84,12 @@ mettilo a `None` per usarli sempre tutti.
   con richiesta di conferma) fa passare al livello successivo senza
   giocarlo, assegnando una penalita' molto marcata sul punteggio finale
   (`SKIP_RANK_PENALTY`, cima al file) che lo rende sostanzialmente nullo.
+- Durante il gioco e' visibile un timer ("Tempo: m:ss") in alto a
+  destra; si ferma automaticamente durante i feedback/spiegazioni.
+- La spiegazione del livello 1 resta a schermo piu' a lungo che in
+  passato (`L1_FEEDBACK_MS`, cima al file, di default 5000 ms) per dare
+  tempo di leggerla con calma.
+- Sulle schermate introduttive di ogni livello, le frecce "<" e ">"
+  permettono di tornare al livello precedente (rigiocandolo da capo) o
+  di saltare subito al successivo, senza dover prima iniziare a
+  giocare.

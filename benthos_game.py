@@ -9,8 +9,9 @@ Tre livelli, ognuno con un sotto-livello FACILE e uno DIFFICILE
 
 LIVELLO 1 - Trova l'intruso   (1 gruppo facile + 1 gruppo difficile)
 LIVELLO 2 - Trascina l'animale nel suo habitat
-            (facile: aria/spiaggia - colonna d'acqua - fondale;
-             difficile: interfaccia aria-acqua / acqua-fondale)
+            (facile: aria/spiaggia - colonna d'acqua - fondale, su
+             sfondo.jpg; difficile: stessa meccanica ma bipartizione
+             aria-acqua / acqua-fondale, su sfondo2.jpg)
 LIVELLO 3 - Quiz              (1 domanda facile + 1 difficile)
 
 ---------------------------------------------------------------------
@@ -25,7 +26,8 @@ placeholder/
       easy/       group1/ group2/ ...   (4 immagini per gruppo)
       difficult/  group1/ group2/ ...
   level2_trascinamento/
-      sfondo.jpg           (aria-acqua / colonna d'acqua / fondale)
+      sfondo.jpg           (facile: aria/spiaggia - colonna d'acqua - fondale)
+      sfondo2.jpg          (difficile: aria-acqua / acqua-fondale)
       easy/       aria_spiaggia/ colonna_acqua/ fondale/
       difficult/  aria_acqua/ acqua_fondale/
   level3_quiz/questions_level3.json
@@ -83,9 +85,6 @@ ADVANCE_EVENT = pygame.USEREVENT + 1   # fine del feedback -> prossima sfida
 # Prova, in ordine, alcuni font "amichevoli" spesso presenti sul sistema;
 # se nessuno e' installato usa il font di default di pygame senza errori.
 PREFERRED_FONT_NAMES = [
-    # "baloo2", "poppins", "quicksand", "nunito", "varelaround",
-    # "segoeuisemibold", "segoeui", "trebuchetms", "comicsansms",
-    # "dejavusans", "verdana", "arial",
     "sourcesanspro"
 ]
 _FONT_CACHE = {}
@@ -98,7 +97,6 @@ def _resolve_font_path():
         for name in PREFERRED_FONT_NAMES:
             try:
                 path = pygame.font.match_font(name)
-                # print("path ok")
             except Exception:
                 path = None
             if path:
@@ -133,11 +131,16 @@ def load_font(size, bold=False):
 PLACEHOLDER_DIR = "placeholder"
 L1_DIR = os.path.join(PLACEHOLDER_DIR, "level1_trova_intruso")
 L2_DIR = os.path.join(PLACEHOLDER_DIR, "level2_trascinamento")
-L2_BACKGROUND = os.path.join(L2_DIR, "sfondo")        # .jpg/.png ok
+# .jpg/.png ok - sfida facile
+L2_BACKGROUND = os.path.join(L2_DIR, "sfondo")
+L2_BACKGROUND_DIFFICULT = os.path.join(L2_DIR, "sfondo2")  # sfida difficile
 GENERIC_BG_CANDIDATES = [os.path.join(PLACEHOLDER_DIR, "background", "sfondo"),
                          os.path.join(PLACEHOLDER_DIR, "backgrounds", "sfondo")]
-QUIZ_FILE = os.path.join(BASE_DIR, PLACEHOLDER_DIR,
-                         "level3_quiz", "questions_level3.json")
+QUIZ_FILE_CANDIDATES = [
+    os.path.join(BASE_DIR, PLACEHOLDER_DIR, "level3_quiz",
+                 "questions_level3.json"),
+    os.path.join(BASE_DIR, "questions_level3.json"),
+]
 LEADERBOARD_FILE = os.path.join(BASE_DIR, "leaderboard.json")
 
 SUBLEVELS = ("easy", "difficult")
@@ -147,9 +150,9 @@ SUB_LABEL = {"easy": "Facile", "difficult": "Difficile"}
 MAX_NAME_LEN = 7
 
 # Penalita' (secondi aggiunti al tempo per ogni errore)
-PENALTY_L1 = 5
+PENALTY_L1 = 8
 PENALTY_L2 = 5
-PENALTY_L3 = 3
+PENALTY_L3 = 8
 
 # Livello saltato: vale zero (nessun tempo). Siccome la classifica e' a tempo,
 # saltare non deve convenire: ogni livello saltato fa scendere il punteggio
@@ -160,7 +163,9 @@ SKIP_RANK_PENALTY = 100000
 PLAY_STATES = ("L1_PLAY", "L2_PLAY", "L3_PLAY")
 
 # Durata del feedback dopo una risposta (ms). NON conta nel tempo di gioco.
-L1_FEEDBACK_MS = 3000
+# Il livello 1 mostra anche una spiegazione testuale, quindi ha bisogno di
+# piu' tempo per essere letta con calma.
+L1_FEEDBACK_MS = 5000
 L2_FEEDBACK_MS = 900
 L3_FEEDBACK_MS = 1300
 
@@ -180,38 +185,43 @@ IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 INTRUDERS = {
     ("easy", "group1"): ("orata", "L'orata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
     ("easy", "group2"): ("delfino", "Il delfino è un mammifero: gli altri sono pesci."),
-    ("easy", "group3"): ("occhiata", "L'occhiata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
+    ("easy", "group3"): ("occhiata", "L'occhiata nuota in acqua libera: gli altri sono organismi del fondale."),
     ("easy", "group4"): ("riccio", "Il riccio di mare è un invertebrato: gli altri sono pesci."),
-    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile: gli altri sono crostacei."),
-    ("difficult", "group1"): ("granchio_blu", "Il granchio blu è una specie aliena, non nativa del Mediterraneo."),
-    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: le altre sono alghe."),
+    # DA VERIFICARE
+    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile e respira aria."),
+    ("difficult", "group1"): ("panocchia", "La panocchia è uno stomatopode: gli altri sono crostacei decapodi."),
+    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: gli altri sono alghe."),
     ("difficult", "group3"): ("cystoseira", "La Cystoseira è un'alga: gli altri sono animali."),
     ("difficult", "group4"): ("spugna", "La spugna non è un mollusco: gli altri tre lo sono."),
-    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione è una specie aliena, non nativa del Mediterraneo."),
+    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione vive a contatto col fondale: gli altri nuotano in acqua libera."),  # DA VERIFICARE
 }
 
 # ---------------------------------------------------------------------
-# LIVELLO 2: dove si trova ogni zona su sfondo.jpg
+# LIVELLO 2: dove si trova ogni zona sullo sfondo
 # (frazioni verticali (alto, basso) dell'area dello sfondo: 0 = cima, 1 = fondo)
-# Regola i valori se le fasce del tuo sfondo sono diverse.
+# Facile: tripartizione (aria/spiaggia - colonna d'acqua - fondale) su
+# sfondo.jpg. Difficile: bipartizione (aria-acqua - acqua-fondale) su
+# sfondo2.jpg, con la stessa identica meccanica del facile (fasce piene,
+# senza sovrapposizioni). Regola i valori se le fasce delle tue immagini
+# sono diverse.
 # ---------------------------------------------------------------------
 ZONE_BANDS = {
     "aria_spiaggia": (0.00, 0.34),
     "colonna_acqua": (0.34, 0.68),
     "fondale": (0.68, 1.00),
-    "aria_acqua": (0.00, 0.40),
-    "acqua_fondale": (0.60, 1.00),
+    "aria_acqua": (0.00, 0.50),
+    "acqua_fondale": (0.50, 1.00),
 }
 ZONE_LABELS = {
     "aria_spiaggia": "Aria / spiaggia",
     "colonna_acqua": "Colonna d'acqua",
     "fondale": "Fondale",
-    "aria_acqua": "Superficie + colonna d'acqua",
-    "acqua_fondale": "Colonna d'acqua + fondale)",
+    "aria_acqua": "Aria / colonna d'acqua",
+    "acqua_fondale": "Colonna d'acqua / fondale",
 }
 L2_HINTS = {
     "easy": "Trascina ogni animale nella zona in cui vive!",
-    "difficult": "Attenzione: alcuni animali vivono in più zone (superficie-colonna d'acqua o colonna d'acqua-fondale)",
+    "difficult": "Trascina ogni animale nella zona in cui vive!",
 }
 
 AVATARS = [
@@ -340,16 +350,15 @@ def discover_l2_zones(sub):
 
 
 def load_quiz_questions():
-    if os.path.exists(QUIZ_FILE):
-        try:
-            with open(QUIZ_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                return data
-        except Exception as e:
-            print(f"Errore caricamento quiz JSON: {e}")
-
-    # Fallback default dictionary if file is missing or fails to load
+    for path in QUIZ_FILE_CANDIDATES:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+            except Exception as e:
+                print(f"Errore caricamento quiz JSON: {e}")
     return {
         "easy": [{"q": "Lo squalo balena è uno squalo o una balena?", "options": ["Squalo", "Balena"], "correct": 0}],
         "difficult": [{"q": "Che cos'è l'ecosistema?", "options": ["L'acqua", "Il sistema ecologico", "L'insieme di organismi viventi e non viventi che interagiscono tra loro e con l'ambiente"], "correct": 2}],
@@ -468,14 +477,14 @@ def initialize_fonts():
                       SCREEN_HEIGHT / INITIAL_SCREEN_HEIGHT)
     scale_ratio = max(scale_ratio, 0.3)
 
-    title_font = load_font(int(100 * scale_ratio), bold=True)
+    title_font = load_font(int(80 * scale_ratio), bold=True)
     subtitle_font = load_font(int(70 * scale_ratio))
     status_font = load_font(int(70 * scale_ratio))
     label_font = load_font(int(50 * scale_ratio))
     leaderboard_font = load_font(int(46 * scale_ratio))
     message_font = load_font(int(56 * scale_ratio), bold=True)
     button_font = load_font(int(60 * scale_ratio), bold=True)
-    quiz_font = load_font(int(70 * scale_ratio), bold=True)
+    quiz_font = load_font(int(50 * scale_ratio), bold=True)
     option_font = load_font(int(54 * scale_ratio))
     small_font = load_font(int(38 * scale_ratio))
     tiny_font = load_font(int(28 * scale_ratio))
@@ -570,7 +579,7 @@ def draw_background():
         pygame.draw.rect(screen, col, (0, y, SCREEN_WIDTH, 4))
 
 
-def draw_header(level_label=""):
+def draw_header(level_label="", timer_text=None):
     draw_text("Apprendista Biologo Marino: Missione Mare", title_font, WHITE,
               SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.07)
     draw_text("Sharper Night 2026 - CNR", subtitle_font,
@@ -581,6 +590,9 @@ def draw_header(level_label=""):
     if level_label:
         draw_text(level_label, label_font, WHITE,
                   SCREEN_WIDTH * 0.97, SCREEN_HEIGHT * 0.07, align="right")
+    if timer_text:
+        draw_text(f"Tempo: {timer_text}", label_font, SUBTITLE_COLOR,
+                  SCREEN_WIDTH * 0.97, SCREEN_HEIGHT * 0.115, align="right")
 
 
 # =====================================================================
@@ -806,6 +818,14 @@ def update_layout():
         btn_w, btn_h = int(320 * scale_ratio), int(90 * scale_ratio)
         LAYOUT["continue_btn"] = pygame.Rect(
             W / 2 - btn_w / 2, H * 0.78, btn_w, btn_h)
+        side = int(90 * scale_ratio)
+        nav_gap = int(40 * scale_ratio)
+        LAYOUT["prev_level_btn"] = pygame.Rect(
+            LAYOUT["continue_btn"].left - nav_gap - side,
+            LAYOUT["continue_btn"].centery - side / 2, side, side)
+        LAYOUT["next_level_btn"] = pygame.Rect(
+            LAYOUT["continue_btn"].right + nav_gap,
+            LAYOUT["continue_btn"].centery - side / 2, side, side)
 
     elif STATE == "L1_PLAY":
         n = len(l1_group["images"]) if l1_group else 4
@@ -885,8 +905,16 @@ def update_layout():
 
     if STATE in PLAY_STATES:
         # pulsante "Salta livello" (in alto a sinistra, sotto il nome)
-        LAYOUT["skip_btn"] = pygame.Rect(int(W * 0.03), int(H * 0.085),
+        LAYOUT["skip_btn"] = pygame.Rect(int(W * 0.03), int(H * 0.145),
                                          int(270 * scale_ratio), int(64 * scale_ratio))
+        # freccette per spostarsi tra le domande/sfide (facile <-> difficile)
+        # dello stesso livello, subito a destra del bottone "Salta livello"
+        nav_side = int(64 * scale_ratio)
+        nav_gap = int(14 * scale_ratio)
+        LAYOUT["prev_q_btn"] = pygame.Rect(
+            LAYOUT["skip_btn"].right + nav_gap, LAYOUT["skip_btn"].y, nav_side, nav_side)
+        LAYOUT["next_q_btn"] = pygame.Rect(
+            LAYOUT["prev_q_btn"].right + nav_gap, LAYOUT["skip_btn"].y, nav_side, nav_side)
         # finestra di conferma
         mw, mh = int(W * 0.5), int(H * 0.32)
         modal = pygame.Rect(int(W / 2 - mw / 2), int(H / 2 - mh / 2), mw, mh)
@@ -910,6 +938,38 @@ def skip_feedback_time(ms):
     """Il tempo del feedback (risposta mostrata) non conta nel cronometro."""
     global level_start_time
     level_start_time += ms / 1000.0
+
+
+# --- Timer a vista -----------------------------------------------------
+# Durante il feedback (spiegazione/risposta mostrata) il tempo non conta
+# per il punteggio (vedi skip_feedback_time): per non far "saltare" il
+# numero a schermo, il timer visualizzato si CONGELA nel momento in cui
+# parte il feedback e riprende da li' quando si passa alla sfida
+# successiva (il conteggio reale viene comunque aggiustato sotto).
+
+_display_freeze_value = None
+
+
+def _mark_feedback_start():
+    global _display_freeze_value
+    _display_freeze_value = max(0.0, time.time() - level_start_time)
+
+
+def _clear_feedback_freeze():
+    global _display_freeze_value
+    _display_freeze_value = None
+
+
+def current_elapsed():
+    """Secondi da mostrare nel timer a vista per il livello in corso."""
+    if _display_freeze_value is not None:
+        return _display_freeze_value
+    return max(0.0, time.time() - level_start_time)
+
+
+def format_timer(seconds):
+    seconds = max(0, int(seconds))
+    return f"{seconds // 60}:{seconds % 60:02d}"
 
 
 # =====================================================================
@@ -937,6 +997,7 @@ def load_l1_group():
     random.shuffle(imgs)
     l1_group = {**g, "images": imgs}
     l1_answered, l1_selected = False, None
+    _clear_feedback_freeze()
 
 
 def start_level1_play():
@@ -986,6 +1047,7 @@ def handle_level1_click(pos):
     for i, r in enumerate(LAYOUT["l1_rects"]):
         if r.collidepoint(pos):
             l1_answered, l1_selected = True, i
+            _mark_feedback_start()
             if l1_group["images"][i]["stem"].lower() != l1_group["intruder"]:
                 level1_wrong += 1
             pygame.time.set_timer(ADVANCE_EVENT, L1_FEEDBACK_MS, loops=1)
@@ -1040,6 +1102,7 @@ def load_l2_sublevel():
                              "rect": None, "home_rect": None})
     random.shuffle(l2_items)
     l2_matched, l2_locked, dragging_item, flash_zone = 0, False, None, None
+    _clear_feedback_freeze()
 
 
 def start_level2_play():
@@ -1085,7 +1148,8 @@ def draw_level2():
     draw_text(L2_HINTS.get(sub, ""), label_font, SUBTITLE_COLOR,
               SCREEN_WIDTH / 2, SCREEN_HEIGHT * 0.195)
     scene = LAYOUT["scene"]
-    bg_path = find_image_path(L2_BACKGROUND)
+    wanted_bg = L2_BACKGROUND_DIFFICULT if sub == "difficult" else L2_BACKGROUND
+    bg_path = find_image_path(wanted_bg) or find_image_path(L2_BACKGROUND)
     has_bg = bg_path is not None
     if has_bg:
         screen.blit(get_scaled(bg_path, scene.size, "Sfondo"), scene.topleft)
@@ -1161,6 +1225,7 @@ def handle_level2_mouseup(pos):
         update_layout()
         if l2_matched == len(l2_items):
             l2_locked = True
+            _mark_feedback_start()
             pygame.time.set_timer(ADVANCE_EVENT, L2_FEEDBACK_MS, loops=1)
     else:
         level2_wrong += 1
@@ -1209,6 +1274,7 @@ def start_level3_play():
     global level_start_time
     change_state("L3_PLAY")
     level_start_time = time.time()
+    _clear_feedback_freeze()
 
 
 def draw_level3():
@@ -1242,6 +1308,7 @@ def handle_level3_click(pos):
     for i in range(len(q["_display_options"])):
         if LAYOUT["option_rects"][i].collidepoint(pos):
             quiz_answered, quiz_selected = True, i
+            _mark_feedback_start()
             if i != q["_correct_display_idx"]:
                 level3_wrong += 1
             pygame.time.set_timer(ADVANCE_EVENT, L3_FEEDBACK_MS, loops=1)
@@ -1253,6 +1320,7 @@ def advance_quiz():
     skip_feedback_time(L3_FEEDBACK_MS)
     quiz_index += 1
     quiz_answered, quiz_selected = False, None
+    _clear_feedback_freeze()
     if quiz_index >= len(quiz_set):
         level3_time = time.time() - level_start_time
         setup_results()
@@ -1331,6 +1399,93 @@ def draw_skip_ui():
         draw_button(LAYOUT["skip_yes"], "Sì, salta",
                     font=small_font, base_color=(230, 120, 120))
         draw_button(LAYOUT["skip_no"], "Continua a giocare", font=small_font)
+
+
+# =====================================================================
+# FRECCETTE FRA LE DOMANDE/SFIDE DELLO STESSO LIVELLO (facile <-> difficile)
+# =====================================================================
+# A differenza di "Salta livello" (che salta l'INTERO livello e penalizza
+# il punteggio), queste freccette si spostano tra le due sfide (facile e
+# difficile) dello stesso livello senza rispondere e senza penalita': il
+# cronometro continua a scorrere normalmente, il tempo di feedback non
+# viene toccato perche' non e' stato mostrato nessun feedback.
+
+def prev_question_available():
+    if STATE == "L1_PLAY":
+        return l1_pos > 0 and not l1_answered
+    if STATE == "L2_PLAY":
+        return l2_pos > 0 and not l2_locked and dragging_item is None
+    if STATE == "L3_PLAY":
+        return quiz_index > 0 and not quiz_answered
+    return False
+
+
+def next_question_available():
+    if STATE == "L1_PLAY":
+        return not l1_answered and l1_pos + 1 < len(l1_queue)
+    if STATE == "L2_PLAY":
+        return not l2_locked and dragging_item is None and l2_pos + 1 < len(l2_queue)
+    if STATE == "L3_PLAY":
+        return not quiz_answered and quiz_index + 1 < len(quiz_set)
+    return False
+
+
+def go_to_prev_question():
+    global l1_pos, l2_pos, quiz_index, quiz_answered, quiz_selected
+    if not prev_question_available():
+        return
+    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    if STATE == "L1_PLAY":
+        l1_pos -= 1
+        load_l1_group()
+    elif STATE == "L2_PLAY":
+        l2_pos -= 1
+        load_l2_sublevel()
+    elif STATE == "L3_PLAY":
+        quiz_index -= 1
+        quiz_answered, quiz_selected = False, None
+        _clear_feedback_freeze()
+    update_layout()
+
+
+def go_to_next_question():
+    global l1_pos, l2_pos, quiz_index, quiz_answered, quiz_selected
+    if not next_question_available():
+        return
+    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    if STATE == "L1_PLAY":
+        l1_pos += 1
+        load_l1_group()
+    elif STATE == "L2_PLAY":
+        l2_pos += 1
+        load_l2_sublevel()
+    elif STATE == "L3_PLAY":
+        quiz_index += 1
+        quiz_answered, quiz_selected = False, None
+        _clear_feedback_freeze()
+    update_layout()
+
+
+def handle_question_nav_click(pos):
+    """Ritorna True se il click e' stato consumato da una delle freccette."""
+    if prev_question_available() and LAYOUT["prev_q_btn"].collidepoint(pos):
+        go_to_prev_question()
+        return True
+    if next_question_available() and LAYOUT["next_q_btn"].collidepoint(pos):
+        go_to_next_question()
+        return True
+    return False
+
+
+def draw_question_nav():
+    if skip_confirm:
+        return
+    if prev_question_available():
+        draw_button(LAYOUT["prev_q_btn"], "<", font=small_font,
+                    base_color=(215, 215, 215))
+    if next_question_available():
+        draw_button(LAYOUT["next_q_btn"], ">", font=small_font,
+                    base_color=(215, 215, 215))
 
 
 def on_advance():
@@ -1483,6 +1638,52 @@ def draw_level_intro():
                       pygame.Rect(SCREEN_WIDTH * 0.2, SCREEN_HEIGHT * 0.48,
                                   SCREEN_WIDTH * 0.6, SCREEN_HEIGHT * 0.2))
     draw_button(LAYOUT["continue_btn"], "Vai!")
+    if STATE in ("L2_INTRO", "L3_INTRO"):
+        draw_button(LAYOUT["prev_level_btn"], "<", base_color=(90, 90, 90))
+        draw_text("Livello precedente", tiny_font, SUBTITLE_COLOR,
+                  LAYOUT["prev_level_btn"].centerx,
+                  LAYOUT["prev_level_btn"].bottom + int(24 * scale_ratio))
+    draw_button(LAYOUT["next_level_btn"], ">", base_color=(90, 90, 90))
+    draw_text("Salta livello", tiny_font, SUBTITLE_COLOR,
+              LAYOUT["next_level_btn"].centerx,
+              LAYOUT["next_level_btn"].bottom + int(24 * scale_ratio))
+
+
+def skip_level_from_intro():
+    """Freccia '>' sull'introduzione: salta l'intero livello corrente
+    (stessa penalita' del bottone "Salta livello" in gioco). Nessuna
+    conferma richiesta: il livello non e' ancora iniziato, non si perde
+    nulla che sia gia' stato giocato."""
+    global level1_time, level1_wrong, level2_time, level2_wrong
+    global level3_time, level3_wrong
+    if STATE == "L1_INTRO":
+        skipped_levels.add(1)
+        level1_time, level1_wrong = 0.0, 0
+        prepare_level2()
+    elif STATE == "L2_INTRO":
+        skipped_levels.add(2)
+        level2_time, level2_wrong = 0.0, 0
+        prepare_level3()
+    elif STATE == "L3_INTRO":
+        skipped_levels.add(3)
+        level3_time, level3_wrong = 0.0, 0
+        setup_results()
+
+
+def go_back_to_previous_level():
+    """Freccia '<' sull'introduzione: torna all'introduzione del livello
+    precedente, cancellandone tempo/errori/eventuale "saltato" gia'
+    registrati (verra' rigiocato da capo, con contenuto scelto a caso di
+    nuovo)."""
+    global level1_time, level1_wrong, level2_time, level2_wrong
+    if STATE == "L2_INTRO":
+        skipped_levels.discard(1)
+        level1_time, level1_wrong = 0.0, 0
+        prepare_level1()
+    elif STATE == "L3_INTRO":
+        skipped_levels.discard(2)
+        level2_time, level2_wrong = 0.0, 0
+        prepare_level2()
 
 
 def handle_level_intro_click(pos):
@@ -1493,6 +1694,10 @@ def handle_level_intro_click(pos):
             start_level2_play()
         elif STATE == "L3_INTRO":
             start_level3_play()
+    elif STATE in ("L2_INTRO", "L3_INTRO") and LAYOUT["prev_level_btn"].collidepoint(pos):
+        go_back_to_previous_level()
+    elif LAYOUT["next_level_btn"].collidepoint(pos):
+        skip_level_from_intro()
 
 
 # =====================================================================
@@ -1547,6 +1752,8 @@ def main():
                     handle_level_intro_click(pos)
                 elif STATE in PLAY_STATES and handle_skip_click(pos):
                     pass  # click consumato dal bottone/dialogo "Salta livello"
+                elif STATE in PLAY_STATES and handle_question_nav_click(pos):
+                    pass  # click consumato dalle freccette prev/next domanda
                 elif STATE == "L1_PLAY":
                     handle_level1_click(pos)
                 elif STATE == "L2_PLAY":
@@ -1573,17 +1780,23 @@ def main():
             draw_header()
             draw_level_intro()
         elif STATE == "L1_PLAY":
-            draw_header(f"Livello 1/3 - {SUB_LABEL[current_sub()]}")
+            draw_header(f"Livello 1/3 - {SUB_LABEL[current_sub()]}",
+                        timer_text=format_timer(current_elapsed()))
             draw_level1()
             draw_skip_ui()
+            draw_question_nav()
         elif STATE == "L2_PLAY":
-            draw_header(f"Livello 2/3 - {SUB_LABEL[current_sub()]}")
+            draw_header(f"Livello 2/3 - {SUB_LABEL[current_sub()]}",
+                        timer_text=format_timer(current_elapsed()))
             draw_level2()
             draw_skip_ui()
+            draw_question_nav()
         elif STATE == "L3_PLAY":
-            draw_header(f"Livello 3/3 - {SUB_LABEL[current_sub()]}")
+            draw_header(f"Livello 3/3 - {SUB_LABEL[current_sub()]}",
+                        timer_text=format_timer(current_elapsed()))
             draw_level3()
             draw_skip_ui()
+            draw_question_nav()
         elif STATE == "RESULTS":
             draw_header()
             draw_results()

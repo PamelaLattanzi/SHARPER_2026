@@ -1,4 +1,4 @@
-# Apprendista Biologo Marino: Missione Mare - CNR Sharper Night 2026
+# Il Fondale Misterioso - CNR Sharper Night 2026
 
 Gioco Pygame sul benthos per lo stand del CNR ad Ancona (25 settembre 2026).
 Il visitatore sceglie un avatar, scrive il proprio nome e affronta 3 livelli
@@ -12,28 +12,46 @@ classifica con tempo totale.
    (massimo 7 caratteri, per restare leggibile anche in classifica).
 2. **Livello 1 - Trova l'intruso**: in un gruppo di 4 immagini, una non
    c'entra con le altre. Prima una sfida facile, poi una difficile.
-   Dopo la risposta viene mostrata la spiegazione per qualche secondo
-   (quel tempo non conta nel cronometro).
+   Dopo la risposta viene mostrata la spiegazione per qualche secondo,
+   con tempo a sufficienza per leggerla con calma (quel tempo non conta
+   nel cronometro, che infatti si ferma finche' la spiegazione e' a
+   schermo).
 3. **Livello 2 - Trascina**: si trascina ogni animale nella zona giusta
    dello sfondo (tasto sinistro del mouse, drag & drop). Prima la sfida
-   facile (aria/spiaggia, colonna d'acqua, fondale), poi quella difficile
-   (le due interfacce: aria-acqua e acqua-fondale).
+   facile (aria/spiaggia, colonna d'acqua, fondale, su `sfondo.jpg`),
+   poi quella difficile (stessa identica meccanica, ma con due zone
+   invece di tre, su `sfondo2.jpg`).
 4. **Livello 3 - Quiz**: una domanda facile e una difficile, estratte a
    caso dall'elenco del file JSON.
 5. **Risultati**: tempo totale (con penalita' per gli errori), posizione
    in classifica — con l'avatar scelto accanto al nome — e l'animazione
    finale con gli animaletti che "esplodono" a schermo.
 
-In ogni livello e' presente un bottone **"Salta livello"** (in alto a
-sinistra, sotto il nome del giocatore), per chi vuole passare oltre — ad
-esempio se la fila e' lunga o il visitatore non e' interessato a quella
-prova. Il bottone chiede prima conferma ("Sì, salta" / "Continua a
-giocare"), cosi' non si salta per sbaglio con un click. Il livello
-confermato come saltato non viene giocato e il punteggio finale viene
-abbassato in modo molto marcato (`SKIP_RANK_PENALTY` in cima al file, di
-default 100000 "secondi equivalenti"), cosi' chi salta finisce comunque
-sotto chiunque abbia completato quel livello: in pratica vale zero. La
-classifica segnala quante prove ha saltato ogni giocatore.
+Durante ogni sfida e' visibile in alto a destra un **timer** ("Tempo:
+m:ss") che mostra il tempo trascorso: si ferma automaticamente ogni
+volta che viene mostrato un feedback/spiegazione, cosi' il numero non
+"salta" quando quel tempo viene escluso dal punteggio.
+
+Nelle schermate introduttive di ogni livello, oltre al bottone **"Vai!"**
+ci sono due frecce: **"<" (Livello precedente)**, per tornare
+all'introduzione del livello appena concluso e rigiocarlo da capo
+(cancellandone il punteggio gia' registrato), e **">" (Salta livello)**,
+per passare al livello successivo senza giocare quello corrente. Non
+serve conferma su queste frecce perche' il livello non e' ancora
+iniziato: non si perde nulla di gia' giocato. La freccia "<" non compare
+sulla schermata del Livello 1 (non c'e' un livello precedente).
+
+In ogni livello, mentre si gioca, e' presente anche un bottone **"Salta
+livello"** (in alto a sinistra, sotto il nome del giocatore), per chi
+vuole passare oltre — ad esempio se la fila e' lunga o il visitatore non
+e' interessato a quella prova. Il bottone chiede prima conferma ("Sì,
+salta" / "Continua a giocare"), cosi' non si salta per sbaglio con un
+click. Il livello confermato come saltato non viene giocato e il
+punteggio finale viene abbassato in modo molto marcato
+(`SKIP_RANK_PENALTY` in cima al file, di default 100000 "secondi
+equivalenti"), cosi' chi salta finisce comunque sotto chiunque abbia
+completato quel livello: in pratica vale zero. La classifica segnala
+quante prove ha saltato ogni giocatore.
 
 Il punteggio finale e la classifica sono salvati in `leaderboard.json`,
 nella stessa cartella dello script, e persistono tra una partita e l'altra.
@@ -73,14 +91,15 @@ placeholder/
 │           group1/  ...
 │           ...
 ├── level2_trascinamento/
-│     ├── sfondo.jpg                  (scena con aria / acqua / fondale)
+│     ├── sfondo.jpg                  (scena facile: aria / acqua / fondale)
+│     ├── sfondo2.jpg                 (scena difficile: aria-acqua / acqua-fondale)
 │     ├── easy/
 │     │     aria_spiaggia/   immagini
 │     │     colonna_acqua/   immagini
 │     │     fondale/         immagini
 │     └── difficult/
-│           aria_acqua/      immagini (vivono sull'interfaccia aria-acqua)
-│           acqua_fondale/   immagini (vivono sull'interfaccia acqua-fondale)
+│           aria_acqua/      immagini (vivono nella meta' aria-acqua di sfondo2)
+│           acqua_fondale/   immagini (vivono nella meta' acqua-fondale di sfondo2)
 └── level3_quiz/
       questions_level3.json
 ```
@@ -106,11 +125,14 @@ stampato in console.
 
 ### Livello 2 - dove si trovano le zone sullo sfondo
 
-Le fasce verticali delle zone (aria/colonna d'acqua/fondale, e le due
-interfacce) sono definite in `ZONE_BANDS` in cima al file, come frazioni
-dell'altezza dell'immagine `sfondo.jpg`. Vanno corrette se le fasce del
-tuo sfondo non coincidono con quelle di default (alto=aria, meta'=acqua,
-basso=fondale).
+Le fasce verticali delle zone sono definite in `ZONE_BANDS` in cima al
+file, come frazioni dell'altezza dell'immagine di sfondo: tre fasce
+(aria/colonna d'acqua/fondale) per la sfida facile su `sfondo.jpg`, due
+fasce (aria-acqua/acqua-fondale) per la sfida difficile su `sfondo2.jpg`
+— stessa meccanica, senza sovrapposizioni ne' concetto di "interfaccia".
+Vanno corrette se le fasce delle tue immagini non coincidono con quelle
+di default (facile: alto=aria, meta'=acqua, basso=fondale; difficile:
+meta' superiore=aria-acqua, meta' inferiore=acqua-fondale).
 
 ## Personalizzare le domande del quiz
 
