@@ -1,39 +1,84 @@
-# Elenco immagini da aggiungere (opzionale, il gioco funziona anche senza)
+# Elenco immagini da aggiungere (il gioco funziona anche senza: le
+# immagini mancanti sono sostituite da un riquadro colorato con le
+# iniziali del nome file)
 
-Metti i file con ESATTAMENTE questi nomi in queste cartelle (gia' create).
-Formato consigliato: PNG quadrato, sfondo trasparente, min. 500x500 px.
+Formato consigliato: JPG o PNG, quadrato o comunque non troppo
+allungato, min. 500x500 px. Le cartelle dei gruppi/zone vengono lette
+automaticamente: si puo' aggiungere o togliere gruppi, zone o immagini
+senza toccare il codice (tranne per gli "intrusi" del livello 1, vedi
+sotto). Estensioni accettate: `.jpg`, `.jpeg`, `.png`, `.webp`.
 
 ## placeholder/avatars/
-- avatar_riccio.png        (Riccio)
-- avatar_polpo.png         (Polpo)
-- avatar_stella.png        (Stella)
-- avatar_granchio.png      (Granchio)
-- avatar_nudibranco.png    (Nudibranco)
-- avatar_cavalluccio.png   (Cavalluccio)
+- avatar_squalo.jpg
+- avatar_polpo.jpg
+- avatar_stella.jpg
+- avatar_delfino.jpg
+- avatar_tartaruga.jpg
+- avatar_cavalluccio.jpg
 
-## placeholder/animals/
-- riccio.png               (Riccio di mare)
-- stella.png                (Stella marina)
-- cavalluccio.png            (Cavalluccio marino)
-- verme_tubicolo.png        (Verme tubicolo)
-- gorgonia.png               (Gorgonia)
-- paguro.png                  (Paguro)
+## placeholder/background/
+- sfondo.jpg   (sfondo generico per le schermate fuori dal livello 2;
+  opzionale: se assente viene usato un gradiente blu "oceano" generato
+  automaticamente)
 
-## placeholder/habitats/
-- fondale_roccioso.png
-- fondale_sabbioso.png
-- posidonia.png              (Prateria di Posidonia)
-- fondale_fangoso.png
-- coralligeno.png             (Fondale coralligeno)
-- pozze_di_marea.png        (Pozze di marea)
+## placeholder/level1_trova_intruso/  (trova l'intruso, 4 immagini a gruppo)
 
-## placeholder/backgrounds/
-- sfondo.png   (opzionale: se assente viene usato un bel gradiente
-  blu "oceano" generato automaticamente, quindi non e' indispensabile)
+### easy/
+- group1 -> cetriolo_di_mare.jpg, orata.jpg, polichete_Diopatra_neapolitana.jpg, stella_marina_Astropecten_irregularis.jpg
+- group2 -> delfino.jpg, mobula.jpg, squalo_bianco.jpg, tonno.jpg
+- group3 -> gorgonia.jpg, occhiata.jpg, riccio.jpg, spugna.jpg
+- group4 -> cefalo.jpg, occhiata.jpg, riccio.jpg, sarago.jpg
+- group5 -> granchio_corridore.jpg, mazzancolla.jpg, tartaruga.jpg, verdesca.jpg
+
+### difficult/
+- group1 -> aragosta.jpg, granceola.jpg, granchio_blu.jpg, panocchia.jpg
+- group2 -> ulva.jpg, cystoseira.jpg, padina.jpg, posidonia.jpg
+- group3 -> anemone.jpg, cystoseira.jpg, gorgonia.jpg, spirografo.jpg
+- group4 -> cozza.jpg, lepre_di_mare.jpg, polpo.jpg, spugna.jpg
+- group5 -> boga.jpg, cefalo.jpg, occhiata.jpg, pesce_scorpione.jpg
+
+**IMPORTANTE**: per ogni gruppo va anche indicato QUALE immagine e'
+l'intruso e PERCHE', nel dizionario `INTRUDERS` in cima a
+`benthos_game.py`. Nel codice ho gia' inserito un tentativo di risposta
+dedotto dai nomi dei file: vanno rivisti e corretti, in particolare
+`easy/group5` e `difficult/group5`. Un gruppo senza intruso indicato (o
+con un intruso il cui nome file non esiste nella cartella) viene escluso
+dal gioco in automatico.
+
+## placeholder/level2_trascinamento/
+
+- **sfondo.jpg** — immagine unica della scena con le tre fasce
+  (aria/interfaccia aria-acqua in alto, colonna d'acqua al centro,
+  fondale/interfaccia acqua-fondale in basso). Su questa immagine
+  vengono disegnate le zone di trascinamento.
+
+### easy/ (aria/spiaggia - colonna d'acqua - fondale)
+- aria_spiaggia -> berta.jpg, cormorano.jpg, gabbiano.jpg
+- colonna_acqua -> delfino.jpg, medusa.jpg, occhiata.jpg, squalo_bianco.jpg
+- fondale -> canestrello.jpg, cetriolo_di_mare.jpg, gorgonia.jpg, polichete_Diopatra_neapolitana.jpg, posidonia.jpg, riccio.jpg, spirografo.jpg, tellina.jpg
+
+### difficult/ (le due interfacce)
+- acqua_fondale -> granchio_blu.jpg, mazzancolla.jpg, murena.jpg, polpo.jpg, seppia.jpg, sogliola.jpg, triglia.jpg
+- aria_acqua -> caravella_portoghese.jpg, foca_monaca.jpg, tartaruga.jpg, velella.jpg
+
+Nota: nel codice, `L2_MAX_PER_ZONE` limita quanti animali per zona
+vengono estratti a caso a ogni partita (di default 3 per la sfida facile
+e 4 per la difficile, cosi' il livello non diventa troppo lungo);
+mettilo a `None` per usarli sempre tutti.
+
+## placeholder/level3_quiz/
+- questions_level3.json — due liste, `easy` e `difficult`; ogni partita
+  ne estrae una domanda a caso da ciascuna.
 
 ## Note
 
-- Il quiz (livello 3) e' solo testuale, non servono immagini.
-- Se vuoi cambiare le coppie animale/habitat o aggiungerne altre, modifica
-  la lista `PAIRS` in `benthos_game.py` (basta rispettare la stessa
-  struttura: id, animal_name, animal_icon, habitat_name, habitat_icon).
+- Le immagini del livello 2 vengono riusate anche per l'animazione finale
+  a particelle (gli animaletti che "esplodono" a fine partita).
+- Se vuoi cambiare le domande del quiz, modifica
+  `placeholder/level3_quiz/questions_level3.json`.
+- Se vuoi cambiare le fasce (altezza) delle zone del livello 2 sullo
+  sfondo, modifica `ZONE_BANDS` in cima a `benthos_game.py`.
+- Il bottone "Salta livello" (in alto a destra durante ogni livello) fa
+  passare al livello successivo senza giocarlo, assegnando una
+  penalita' fissa (`SKIP_PENALTY_SECONDS`, cima al file) che rende il
+  punteggio di quel livello sostanzialmente nullo.

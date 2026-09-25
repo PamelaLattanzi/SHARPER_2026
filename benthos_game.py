@@ -101,6 +101,13 @@ PENALTY_L1 = 8
 PENALTY_L2 = 5
 PENALTY_L3 = 8
 
+# Se il giocatore salta un livello, a quel livello viene assegnato questo
+# tempo "peggiore possibile" invece del tempo impiegato, cosi' il livello
+# saltato pesa sul punteggio finale come se fosse stato un fallimento
+# totale (in pratica: punteggio ~ zero per quel livello). Alzalo se vuoi
+# che saltare pesi ancora di piu'.
+SKIP_PENALTY_SECONDS = 120
+
 # Livello saltato: vale zero (nessun tempo). Siccome la classifica e' a tempo,
 # saltare non deve convenire: ogni livello saltato fa scendere il punteggio
 # di questo valore (in "secondi equivalenti"), cosi' chi salta finisce
@@ -703,6 +710,11 @@ def update_layout():
     LAYOUT = {}
     W, H = SCREEN_WIDTH, SCREEN_HEIGHT
 
+    if STATE in ("L1_PLAY", "L2_PLAY", "L3_PLAY"):
+        btn_w, btn_h = int(230 * scale_ratio), int(56 * scale_ratio)
+        LAYOUT["skip_btn"] = pygame.Rect(
+            W - btn_w - int(24 * scale_ratio), int(20 * scale_ratio), btn_w, btn_h)
+
     if STATE == "AVATAR":
         card_size = int(260 * scale_ratio)
         margin = int(40 * scale_ratio)
@@ -1257,6 +1269,41 @@ def on_advance():
         advance_quiz()
 
 
+# --- Salta livello (bottone "Salta livello") -------------------------
+# Il livello saltato non viene giocato: gli si assegna SKIP_PENALTY_SECONDS
+# al posto del tempo impiegato, cosi' pesa come un fallimento totale sul
+# punteggio finale, e si passa subito al livello successivo.
+
+def skip_level1():
+    global level1_time
+    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    level1_time = SKIP_PENALTY_SECONDS
+    prepare_level2()
+
+
+def skip_level2():
+    global level2_time
+    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    level2_time = SKIP_PENALTY_SECONDS
+    prepare_level3()
+
+
+def skip_level3():
+    global level3_time
+    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    level3_time = SKIP_PENALTY_SECONDS
+    setup_results()
+
+
+def handle_skip_click():
+    if STATE == "L1_PLAY":
+        skip_level1()
+    elif STATE == "L2_PLAY":
+        skip_level2()
+    elif STATE == "L3_PLAY":
+        skip_level3()
+
+
 # =====================================================================
 # RISULTATI
 # =====================================================================
@@ -1453,6 +1500,8 @@ def main():
                     handle_avatar_click(pos)
                 elif STATE in ("L1_INTRO", "L2_INTRO", "L3_INTRO"):
                     handle_level_intro_click(pos)
+                elif STATE in ("L1_PLAY", "L2_PLAY", "L3_PLAY") and LAYOUT["skip_btn"].collidepoint(pos):
+                    handle_skip_click()
                 elif STATE == "L1_PLAY":
                     handle_level1_click(pos)
                 elif STATE == "L2_PLAY":
@@ -1481,12 +1530,18 @@ def main():
         elif STATE == "L1_PLAY":
             draw_header(f"Livello 1/3 - {SUB_LABEL[current_sub()]}")
             draw_level1()
+            draw_button(LAYOUT["skip_btn"], "Salta livello", font=small_font,
+                       base_color=(90, 90, 90))
         elif STATE == "L2_PLAY":
             draw_header(f"Livello 2/3 - {SUB_LABEL[current_sub()]}")
             draw_level2()
+            draw_button(LAYOUT["skip_btn"], "Salta livello", font=small_font,
+                       base_color=(90, 90, 90))
         elif STATE == "L3_PLAY":
             draw_header(f"Livello 3/3 - {SUB_LABEL[current_sub()]}")
             draw_level3()
+            draw_button(LAYOUT["skip_btn"], "Salta livello", font=small_font,
+                       base_color=(90, 90, 90))
         elif STATE == "RESULTS":
             draw_header()
             draw_results()
