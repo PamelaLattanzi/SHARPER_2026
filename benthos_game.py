@@ -83,9 +83,10 @@ ADVANCE_EVENT = pygame.USEREVENT + 1   # fine del feedback -> prossima sfida
 # Prova, in ordine, alcuni font "amichevoli" spesso presenti sul sistema;
 # se nessuno e' installato usa il font di default di pygame senza errori.
 PREFERRED_FONT_NAMES = [
-    "baloo2", "poppins", "quicksand", "nunito", "varelaround",
-    "segoeuisemibold", "segoeui", "trebuchetms", "comicsansms",
-    "dejavusans", "verdana", "arial",
+    # "baloo2", "poppins", "quicksand", "nunito", "varelaround",
+    # "segoeuisemibold", "segoeui", "trebuchetms", "comicsansms",
+    # "dejavusans", "verdana", "arial",
+    "sourcesanspro"
 ]
 _FONT_CACHE = {}
 _font_path_cache = {"resolved": False, "path": None}
@@ -97,6 +98,7 @@ def _resolve_font_path():
         for name in PREFERRED_FONT_NAMES:
             try:
                 path = pygame.font.match_font(name)
+                # print("path ok")
             except Exception:
                 path = None
             if path:
@@ -134,11 +136,8 @@ L2_DIR = os.path.join(PLACEHOLDER_DIR, "level2_trascinamento")
 L2_BACKGROUND = os.path.join(L2_DIR, "sfondo")        # .jpg/.png ok
 GENERIC_BG_CANDIDATES = [os.path.join(PLACEHOLDER_DIR, "background", "sfondo"),
                          os.path.join(PLACEHOLDER_DIR, "backgrounds", "sfondo")]
-QUIZ_FILE_CANDIDATES = [
-    os.path.join(BASE_DIR, PLACEHOLDER_DIR, "level3_quiz",
-                 "questions_level3.json"),
-    os.path.join(BASE_DIR, "questions_level3.json"),
-]
+QUIZ_FILE = os.path.join(BASE_DIR, PLACEHOLDER_DIR,
+                         "level3_quiz", "questions_level3.json")
 LEADERBOARD_FILE = os.path.join(BASE_DIR, "leaderboard.json")
 
 SUBLEVELS = ("easy", "difficult")
@@ -207,12 +206,12 @@ ZONE_LABELS = {
     "aria_spiaggia": "Aria / spiaggia",
     "colonna_acqua": "Colonna d'acqua",
     "fondale": "Fondale",
-    "aria_acqua": "Interfaccia aria-acqua",
-    "acqua_fondale": "Interfaccia acqua-fondale",
+    "aria_acqua": "Superficie + colonna d'acqua",
+    "acqua_fondale": "Colonna d'acqua + fondale)",
 }
 L2_HINTS = {
     "easy": "Trascina ogni animale nella zona in cui vive!",
-    "difficult": "Attenzione: alcuni animali vivono sulle 'interfacce' (aria-acqua o acqua-fondale)",
+    "difficult": "Attenzione: alcuni animali vivono in più zone (superficie-colonna d'acqua o colonna d'acqua-fondale)",
 }
 
 AVATARS = [
@@ -341,15 +340,16 @@ def discover_l2_zones(sub):
 
 
 def load_quiz_questions():
-    for path in QUIZ_FILE_CANDIDATES:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                if isinstance(data, dict):
-                    return data
-            except Exception as e:
-                print(f"Errore caricamento quiz JSON: {e}")
+    if os.path.exists(QUIZ_FILE):
+        try:
+            with open(QUIZ_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+        except Exception as e:
+            print(f"Errore caricamento quiz JSON: {e}")
+
+    # Fallback default dictionary if file is missing or fails to load
     return {
         "easy": [{"q": "Lo squalo balena è uno squalo o una balena?", "options": ["Squalo", "Balena"], "correct": 0}],
         "difficult": [{"q": "Che cos'è l'ecosistema?", "options": ["L'acqua", "Il sistema ecologico", "L'insieme di organismi viventi e non viventi che interagiscono tra loro e con l'ambiente"], "correct": 2}],
