@@ -185,15 +185,14 @@ IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 INTRUDERS = {
     ("easy", "group1"): ("orata", "L'orata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
     ("easy", "group2"): ("delfino", "Il delfino è un mammifero: gli altri sono pesci."),
-    ("easy", "group3"): ("occhiata", "L'occhiata nuota in acqua libera: gli altri sono organismi del fondale."),
+    ("easy", "group3"): ("occhiata", "L'occhiata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
     ("easy", "group4"): ("riccio", "Il riccio di mare è un invertebrato: gli altri sono pesci."),
-    # DA VERIFICARE
-    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile e respira aria."),
-    ("difficult", "group1"): ("panocchia", "La panocchia è uno stomatopode: gli altri sono crostacei decapodi."),
-    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: gli altri sono alghe."),
+    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile: gli altri sono crostacei."),
+    ("difficult", "group1"): ("granchio_blu", "Il granchio blu è una specie aliena, non nativa del Mediterraneo."),
+    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: le altre sono alghe."),
     ("difficult", "group3"): ("cystoseira", "La Cystoseira è un'alga: gli altri sono animali."),
     ("difficult", "group4"): ("spugna", "La spugna non è un mollusco: gli altri tre lo sono."),
-    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione vive a contatto col fondale: gli altri nuotano in acqua libera."),  # DA VERIFICARE
+    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione è una specie aliena, non nativa del Mediterraneo."),
 }
 
 # ---------------------------------------------------------------------
@@ -480,7 +479,7 @@ def initialize_fonts():
     title_font = load_font(int(80 * scale_ratio), bold=True)
     subtitle_font = load_font(int(70 * scale_ratio))
     status_font = load_font(int(70 * scale_ratio))
-    label_font = load_font(int(50 * scale_ratio))
+    label_font = load_font(int(30 * scale_ratio))
     leaderboard_font = load_font(int(46 * scale_ratio))
     message_font = load_font(int(56 * scale_ratio), bold=True)
     button_font = load_font(int(60 * scale_ratio), bold=True)
