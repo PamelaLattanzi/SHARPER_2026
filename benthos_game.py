@@ -111,7 +111,8 @@ def load_font(size, bold=False):
         return _FONT_CACHE[key]
     path = _resolve_font_path()
     try:
-        f = pygame.font.Font(path, size) if path else pygame.font.Font(None, size)
+        f = pygame.font.Font(
+            path, size) if path else pygame.font.Font(None, size)
     except Exception:
         f = pygame.font.Font(None, size)
     try:
@@ -124,6 +125,7 @@ def load_font(size, bold=False):
 # =====================================================================
 # CONFIGURAZIONE
 # =====================================================================
+
 
 PLACEHOLDER_DIR = "placeholder"
 L1_DIR = os.path.join(PLACEHOLDER_DIR, "level1_trova_intruso")
@@ -178,14 +180,14 @@ IMG_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 INTRUDERS = {
     ("easy", "group1"): ("orata", "L'orata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
     ("easy", "group2"): ("delfino", "Il delfino è un mammifero: gli altri sono pesci."),
-    ("easy", "group3"): ("occhiata", "L'occhiata nuota in acqua libera: gli altri sono organismi del fondale."),
+    ("easy", "group3"): ("occhiata", "L'occhiata è un pesce: gli altri sono invertebrati che vivono sul fondale."),
     ("easy", "group4"): ("riccio", "Il riccio di mare è un invertebrato: gli altri sono pesci."),
-    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile e respira aria."),  # DA VERIFICARE
-    ("difficult", "group1"): ("panocchia", "La panocchia è uno stomatopode: gli altri sono crostacei decapodi."),
-    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: gli altri sono alghe."),
+    ("easy", "group5"): ("tartaruga", "La tartaruga marina è un rettile e deve uscire fuori dall'acqua per respirare."),
+    ("difficult", "group1"): ("granchio_blu", "Il granchio blu è una specie aliena, non nativa del Mediterraneo."),
+    ("difficult", "group2"): ("posidonia", "La Posidonia è una pianta con radici e fiori: le altre sono alghe."),
     ("difficult", "group3"): ("cystoseira", "La Cystoseira è un'alga: gli altri sono animali."),
     ("difficult", "group4"): ("spugna", "La spugna non è un mollusco: gli altri tre lo sono."),
-    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione vive a contatto col fondale: gli altri nuotano in acqua libera."),  # DA VERIFICARE
+    ("difficult", "group5"): ("pesce_scorpione", "Il pesce scorpione è una specie aliena, non nativa del Mediterraneo."),
 }
 
 # ---------------------------------------------------------------------
@@ -313,11 +315,13 @@ def discover_l1_groups(sub):
             continue
         info = INTRUDERS.get((sub, norm_key(gname)))
         if info is None:
-            print(f"[AVVISO] Nessun intruso definito per {sub}/{gname}: gruppo saltato")
+            print(
+                f"[AVVISO] Nessun intruso definito per {sub}/{gname}: gruppo saltato")
             continue
         stems = [stem_of(p).lower() for p in imgs]
         if info[0].lower() not in stems:
-            print(f"[AVVISO] L'intruso '{info[0]}' non e' in {sub}/{gname}: gruppo saltato")
+            print(
+                f"[AVVISO] L'intruso '{info[0]}' non e' in {sub}/{gname}: gruppo saltato")
             continue
         groups.append({"name": gname,
                        "images": [{"path": p, "stem": stem_of(p)} for p in imgs],
@@ -809,10 +813,12 @@ def update_layout():
         x0 = (W - (n * card + (n - 1) * margin)) / 2
         LAYOUT["l1_rects"] = [pygame.Rect(x0 + i * (card + margin), H * 0.34, card, card)
                               for i in range(n)]
-        LAYOUT["l1_feedback"] = pygame.Rect(W * 0.1, H * 0.83, W * 0.8, H * 0.15)
+        LAYOUT["l1_feedback"] = pygame.Rect(
+            W * 0.1, H * 0.83, W * 0.8, H * 0.15)
 
     elif STATE == "L2_PLAY":
-        scene = pygame.Rect(int(W * 0.03), int(H * 0.235), int(W * 0.66), int(H * 0.73))
+        scene = pygame.Rect(int(W * 0.03), int(H * 0.235),
+                            int(W * 0.66), int(H * 0.73))
         LAYOUT["scene"] = scene
         n = max(1, len(l2_zones))
         for i, z in enumerate(l2_zones):
@@ -860,7 +866,8 @@ def update_layout():
         opt_h, opt_gap = int(100 * scale_ratio), int(24 * scale_ratio)
         top = LAYOUT["question_rect"].bottom + int(50 * scale_ratio)
         LAYOUT["option_rects"] = [
-            pygame.Rect(W / 2 - box_w / 2, top + i * (opt_h + opt_gap), box_w, opt_h)
+            pygame.Rect(W / 2 - box_w / 2, top + i *
+                        (opt_h + opt_gap), box_w, opt_h)
             for i in range(4)]
 
     elif STATE == "RESULTS":
@@ -887,7 +894,8 @@ def update_layout():
         bh = int(80 * scale_ratio)
         gap = int(30 * scale_ratio)
         by = modal.bottom - bh - int(30 * scale_ratio)
-        LAYOUT["skip_yes"] = pygame.Rect(modal.centerx - bw - gap // 2, by, bw, bh)
+        LAYOUT["skip_yes"] = pygame.Rect(
+            modal.centerx - bw - gap // 2, by, bw, bh)
         LAYOUT["skip_no"] = pygame.Rect(modal.centerx + gap // 2, by, bw, bh)
 
 
@@ -966,7 +974,8 @@ def draw_level1():
         draw_panel(fb, alpha=170)
         draw_text("Esatto!" if chosen else "Non proprio!", message_font,
                   MATCHED_COLOR if chosen else WRONG_COLOR, fb.centerx, fb.top + int(38 * scale_ratio))
-        draw_wrapped_text(g["reason"], label_font, WHITE, fb, top_offset=int(70 * scale_ratio))
+        draw_wrapped_text(g["reason"], label_font, WHITE,
+                          fb, top_offset=int(70 * scale_ratio))
 
 
 def handle_level1_click(pos):
@@ -1307,7 +1316,8 @@ def draw_skip_ui():
         draw_button(LAYOUT["skip_btn"], "Salta livello",
                     font=small_font, base_color=(215, 215, 215))
     if skip_confirm:
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay = pygame.Surface(
+            (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 170))
         screen.blit(overlay, (0, 0))
         modal = LAYOUT["skip_modal"]
@@ -1372,7 +1382,8 @@ def draw_results():
     msg_rect = LAYOUT["message_rect"]
     draw_panel(msg_rect)
     rank_text = f"Posizione in classifica: #{player_rank}" if player_rank else "Posizione in classifica: -"
-    draw_text(rank_text, message_font, WHITE, msg_rect.centerx, msg_rect.centery)
+    draw_text(rank_text, message_font, WHITE,
+              msg_rect.centerx, msg_rect.centery)
     draw_leaderboard_box(LAYOUT["leaderboard_rect"])
     draw_button(LAYOUT["play_again_btn"], "Gioca ancora")
 
