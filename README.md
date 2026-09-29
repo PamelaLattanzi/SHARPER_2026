@@ -1,5 +1,16 @@
 # Il Fondale Misterioso - CNR Sharper Night 2026
 
+> **English summary** — An educational Pygame game about marine benthic life,
+> built for the CNR (IRBIM Ancona) stand at SHARPER Night 2026 (Ancona, Italy).
+> Players pick an avatar and go through three levels: *spot the odd one out*,
+> *drag each animal to its habitat* and a *quiz*, racing against the clock for
+> a place on the leaderboard. The game is in Italian.
+>
+> ```
+> pip install -r requirements.txt
+> python benthos_game.py
+> ```
+
 Gioco Pygame sul benthos per lo stand del CNR ad Ancona (25 settembre 2026).
 Il visitatore sceglie un avatar, scrive il proprio nome e affronta 3 livelli
 sugli organismi marini e i loro habitat. Ogni livello ha una sfida FACILE
@@ -59,7 +70,7 @@ nella stessa cartella dello script, e persistono tra una partita e l'altra.
 ## Avvio
 
 ```
-pip install pygame
+pip install -r requirements.txt
 python3 benthos_game.py
 ```
 
@@ -159,3 +170,12 @@ font di default di pygame. Per usare un font specifico (ad esempio un
 lista `PREFERRED_FONT_NAMES`, purche' sia installato come font di
 sistema.
 
+## Licenza e immagini
+
+Il codice è distribuito con licenza [MIT](LICENSE).
+
+Le immagini nella cartella `placeholder/` provengono da archivi di foto
+gratuite e libere da copyright e sono state modificate per il gioco.
+
+La classifica (`leaderboard.json`) viene creata automaticamente alla prima
+partita e non è inclusa nel repository, perché contiene i nomi dei giocatori.

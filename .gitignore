@@ -1,0 +1,23 @@
+# Classifica locale: contiene i nomi dei visitatori, non va pubblicata
+leaderboard.json
+
+# Backup privati / file locali
+_private/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build (PyInstaller)
+build/
+dist/
+*.spec
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
