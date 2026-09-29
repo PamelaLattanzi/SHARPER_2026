@@ -80,10 +80,10 @@ SELECTED_COLOR = (255, 215, 0)
 ADVANCE_EVENT = pygame.USEREVENT + 1   # fine del feedback -> prossima sfida
 
 # =====================================================================
-# FONT PIU' ACCATTIVANTE (con fallback automatico al font di sistema)
+# FONT: Source Sans Pro (con fallback automatico al font di pygame)
 # =====================================================================
-# Prova, in ordine, alcuni font "amichevoli" spesso presenti sul sistema;
-# se nessuno e' installato usa il font di default di pygame senza errori.
+# Usa Source Sans Pro se e' installato come font di sistema;
+# altrimenti usa il font di default di pygame senza errori.
 PREFERRED_FONT_NAMES = [
     "sourcesanspro"
 ]

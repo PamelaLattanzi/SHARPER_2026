@@ -1,4 +1,4 @@
-# Il Fondale Misterioso - CNR Sharper Night 2026
+# Apprendista Biologo Marino: Missione Mare - CNR Sharper Night 2026
 
 > **English summary** — An educational Pygame game about marine benthic life,
 > built for the CNR (IRBIM Ancona) stand at SHARPER Night 2026 (Ancona, Italy).
@@ -161,14 +161,14 @@ possono modificare senza toccare il resto del codice.
 
 ## Font e grafica
 
-Il gioco cerca automaticamente, in ordine di preferenza, alcuni font
-"amichevoli" installati sul sistema (elenco `PREFERRED_FONT_NAMES` in
-cima al file: Poppins, Nunito, Segoe UI, Trebuchet MS, Comic Sans, ecc.)
-e usa il primo che trova; se nessuno e' installato usa senza errori il
-font di default di pygame. Per usare un font specifico (ad esempio un
-.ttf scaricato per l'occasione) basta aggiungerne il nome in cima alla
-lista `PREFERRED_FONT_NAMES`, purche' sia installato come font di
-sistema.
+Il gioco usa il font **Source Sans Pro** (nome in `PREFERRED_FONT_NAMES`,
+in cima a `benthos_game.py`), che deve essere installato come font di
+sistema: si scarica gratuitamente da
+[Google Fonts](https://fonts.google.com/specimen/Source+Sans+3) o da
+[Adobe Fonts](https://github.com/adobe-fonts/source-sans). Se non e'
+installato, il gioco parte comunque usando senza errori il font di
+default di pygame. Per cambiare font basta sostituire il nome nella lista
+`PREFERRED_FONT_NAMES`, purche' il nuovo font sia installato sul sistema.
 
 ## Licenza e immagini
 
