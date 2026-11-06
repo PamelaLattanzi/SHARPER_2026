@@ -1627,7 +1627,7 @@ def draw_results():
 # Autori e licenza, mostrati in piccolo in basso a destra nei risultati
 CREDITS_LINES = [
     "Un gioco ideato e realizzato da:",
-    "Pamela Lattanzi, Deborah D'Angelo, Kevin De Simone",
+    "Pamela Lattanzi, Deborah D'Angelo, Kevin De Simone, Emma Ventura", 
     "CNR-IRBIM, sede di Ancona",
     "Codice con licenza MIT - (c) 2026 Pamela Lattanzi",
 ]
