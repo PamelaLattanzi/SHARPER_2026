@@ -1,0 +1,48 @@
+# Costruisce la versione web del gioco (pygbag) e la pubblica su GitHub Pages
+# a ogni push su main. Il gioco sara' su:
+#   https://pamelalattanzi.github.io/SHARPER_2026/
+name: Pubblica versione web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scarica il font Source Sans 3 (se non e' gia' nel repository)
+        run: |
+          mkdir -p fonts
+          for s in Regular Bold; do
+            [ -f fonts/SourceSans3-$s.ttf ] || curl -sSfL -o fonts/SourceSans3-$s.ttf \
+              https://github.com/adobe-fonts/source-sans/raw/release/TTF/SourceSans3-$s.ttf
+          done
+          [ -f fonts/LICENSE.md ] || curl -sSfL -o fonts/LICENSE.md \
+            https://raw.githubusercontent.com/adobe-fonts/source-sans/release/LICENSE.md
+
+      - name: Riduci le immagini per il web (solo nella copia della build)
+        run: |
+          pip install pillow
+          python .github/scripts/shrink_images.py placeholder
+
+      - name: Costruisci con pygbag
+        run: |
+          pip install pygbag
+          python -m pygbag --build --title "Apprendista Biologo Marino" $GITHUB_WORKSPACE
+
+      - name: Pubblica su GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: build/web

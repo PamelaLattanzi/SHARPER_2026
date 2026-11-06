@@ -37,6 +37,8 @@ iniziali, quindi il gioco parte anche con cartelle incomplete.
 ---------------------------------------------------------------------
 """
 
+import asyncio
+import sys
 import pygame
 import random
 import time
@@ -49,11 +51,20 @@ import zlib
 # --- Pygame Initialization ---
 pygame.init()
 
-infoObject = pygame.display.Info()
-SCREEN_WIDTH = infoObject.current_w
-SCREEN_HEIGHT = infoObject.current_h
-screen = pygame.display.set_mode(
-    (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+# True quando il gioco gira nel browser (versione web creata con pygbag)
+IS_WEB = sys.platform == "emscripten"
+
+if IS_WEB:
+    # Nel browser la dimensione dello schermo non e' affidabile: si usa una
+    # risoluzione fissa 16:9 e pygbag adatta il canvas alla pagina.
+    SCREEN_WIDTH, SCREEN_HEIGHT = 1600, 900
+    WINDOW_FLAGS = 0
+else:
+    infoObject = pygame.display.Info()
+    SCREEN_WIDTH = infoObject.current_w
+    SCREEN_HEIGHT = infoObject.current_h
+    WINDOW_FLAGS = pygame.RESIZABLE
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), WINDOW_FLAGS)
 pygame.display.set_caption(
     "Apprendista Biologo Marino: Missione Mare - Sharper Night 2026")
 
@@ -91,9 +102,23 @@ _FONT_CACHE = {}
 _font_path_cache = {"resolved": False, "path": None}
 
 
+# Font incluso nel progetto (cartella fonts/): necessario per la versione web,
+# dove i font di sistema non sono disponibili. Se manca si usano i font di
+# sistema (versione desktop) o quello di default di pygame.
+BUNDLED_FONT_FILES = {
+    False: os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "fonts", "SourceSans3-Regular.ttf"),
+    True: os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "fonts", "SourceSans3-Bold.ttf"),
+}
+
+
 def _resolve_font_path():
     if not _font_path_cache["resolved"]:
         _font_path_cache["resolved"] = True
+        if os.path.isfile(BUNDLED_FONT_FILES[False]):
+            _font_path_cache["path"] = BUNDLED_FONT_FILES[False]
+            return _font_path_cache["path"]
         for name in PREFERRED_FONT_NAMES:
             try:
                 path = pygame.font.match_font(name)
@@ -111,15 +136,19 @@ def load_font(size, bold=False):
     if key in _FONT_CACHE:
         return _FONT_CACHE[key]
     path = _resolve_font_path()
+    real_bold = bold and os.path.isfile(BUNDLED_FONT_FILES[True])
+    if real_bold:
+        path = BUNDLED_FONT_FILES[True]
     try:
         f = pygame.font.Font(
             path, size) if path else pygame.font.Font(None, size)
     except Exception:
         f = pygame.font.Font(None, size)
-    try:
-        f.set_bold(bold)
-    except Exception:
-        pass
+    if bold and not real_bold:
+        try:
+            f.set_bold(True)
+        except Exception:
+            pass
     _FONT_CACHE[key] = f
     return f
 
@@ -601,7 +630,25 @@ def draw_header(level_label="", timer_text=None):
 leaderboard = []
 
 
+LEADERBOARD_WEB_KEY = "benthos_leaderboard"
+
+
+def _web_storage():
+    """localStorage del browser (solo versione web), oppure None."""
+    try:
+        import platform as web_platform  # modulo di pygbag nel browser
+        return web_platform.window.localStorage
+    except Exception:
+        return None
+
+
 def load_leaderboard():
+    if IS_WEB:
+        try:
+            raw = _web_storage().getItem(LEADERBOARD_WEB_KEY)
+            return json.loads(raw) if raw else []
+        except Exception:
+            return []
     if os.path.exists(LEADERBOARD_FILE):
         try:
             with open(LEADERBOARD_FILE, "r", encoding="utf-8") as f:
@@ -614,6 +661,15 @@ def load_leaderboard():
 def save_leaderboard():
     try:
         leaderboard.sort(key=lambda x: x["final_score"], reverse=True)
+        if IS_WEB:
+            # nel browser i file si perdono ricaricando la pagina:
+            # la classifica va nel localStorage (resta in quel browser)
+            try:
+                _web_storage().setItem(LEADERBOARD_WEB_KEY,
+                                       json.dumps(leaderboard, ensure_ascii=False))
+            except Exception as e:
+                print(f"Errore nel salvataggio della classifica: {e}")
+            return
         with open(LEADERBOARD_FILE, "w", encoding="utf-8") as f:
             json.dump(leaderboard, f, indent=4, ensure_ascii=False)
     except IOError as e:
@@ -1541,6 +1597,31 @@ def draw_results():
               msg_rect.centerx, msg_rect.centery)
     draw_leaderboard_box(LAYOUT["leaderboard_rect"])
     draw_button(LAYOUT["play_again_btn"], "Gioca ancora")
+    draw_credits()
+
+
+# Autori e licenza, mostrati in piccolo in basso a destra nei risultati
+CREDITS_LINES = [
+    "Un gioco ideato e realizzato da:",
+    "Pamela Lattanzi, Deborah D'Angelo, Kevin De Simone",
+    "CNR-IRBIM, sede di Ancona",
+    "Codice con licenza MIT - (c) 2026 Pamela Lattanzi",
+]
+
+
+def draw_credits():
+    font = load_font(int(34 * scale_ratio))
+    pad = int(24 * scale_ratio)
+    inner = int(14 * scale_ratio)
+    lh = font.get_height() + int(4 * scale_ratio)
+    text_w = max(font.size(line)[0] for line in CREDITS_LINES)
+    box = pygame.Rect(0, 0, text_w + 2 * inner, lh * len(CREDITS_LINES) + 2 * inner)
+    box.bottomright = (SCREEN_WIDTH - pad, SCREEN_HEIGHT - pad)
+    draw_overlay(box, (0, 0, 0), 120)
+    for i, line in enumerate(CREDITS_LINES):
+        color = WHITE if i == 1 else SUBTITLE_COLOR
+        draw_text(line, font, color, box.right - inner,
+                  box.top + inner + lh / 2 + i * lh, align="right")
 
 
 def reset_game():
@@ -1703,7 +1784,7 @@ def handle_level_intro_click(pos):
 # MAIN LOOP
 # =====================================================================
 
-def main():
+async def main():
     global SCREEN_WIDTH, SCREEN_HEIGHT, screen, leaderboard, player_name, name_active
     global PARTICLE_ICONS
 
@@ -1721,12 +1802,13 @@ def main():
                 running = False
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
+                if not IS_WEB:   # nel browser Esc non chiude la pagina
+                    running = False
 
             elif event.type == pygame.VIDEORESIZE:
                 SCREEN_WIDTH, SCREEN_HEIGHT = event.size
                 screen = pygame.display.set_mode(
-                    (SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+                    (SCREEN_WIDTH, SCREEN_HEIGHT), WINDOW_FLAGS)
                 initialize_fonts()
                 SCALED_CACHE.clear()
                 update_layout()
@@ -1806,9 +1888,12 @@ def main():
 
         pygame.display.flip()
         clock.tick(60)
+        # restituisce il controllo al browser a ogni fotogramma (pygbag);
+        # sul desktop non cambia nulla
+        await asyncio.sleep(0)
 
     pygame.quit()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

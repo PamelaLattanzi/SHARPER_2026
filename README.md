@@ -170,6 +170,28 @@ installato, il gioco parte comunque usando senza errori il font di
 default di pygame. Per cambiare font basta sostituire il nome nella lista
 `PREFERRED_FONT_NAMES`, purche' il nuovo font sia installato sul sistema.
 
+## Versione web (si gioca dal browser, senza installare Python)
+
+Il gioco e' pubblicato su GitHub Pages:
+**https://pamelalattanzi.github.io/SHARPER_2026/**
+
+La versione web viene creata con [pygbag](https://pygame-web.github.io/)
+(che converte il gioco Pygame in WebAssembly) dal workflow
+`.github/workflows/web.yml`, che parte automaticamente a ogni push su `main`:
+scarica il font, riduce le immagini per il web (solo nella copia della
+build, gli originali non cambiano) e pubblica il risultato sul branch
+`gh-pages`.
+
+Note sulla versione web:
+- `main.py` e' il punto di ingresso richiesto da pygbag; sul computer si
+  continua a usare `python benthos_game.py`.
+- Al primo avvio la pagina chiede un click per partire (regola dei browser).
+- La classifica e' salvata nel browser (localStorage): resta tra una
+  partita e l'altra sullo stesso computer/browser, ma non e' condivisa tra
+  dispositivi diversi.
+- Per provarla in locale: `pip install pygbag`, poi `pygbag .` nella cartella
+  del gioco e aprire http://localhost:8000
+
 ## Licenza e immagini
 
 Il codice è distribuito con licenza [MIT](LICENSE).
