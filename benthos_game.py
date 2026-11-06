@@ -90,6 +90,30 @@ SELECTED_COLOR = (255, 215, 0)
 # --- Custom events ---
 ADVANCE_EVENT = pygame.USEREVENT + 1   # fine del feedback -> prossima sfida
 
+# Timer "fatto in casa" per il passaggio alla sfida successiva:
+# pygame.time.set_timer non esiste nella versione web (pygbag), quindi
+# si salva l'istante di scadenza e il ciclo principale lo controlla.
+_advance_at = None
+
+
+def schedule_advance(ms):
+    """Fa partire ADVANCE_EVENT tra `ms` millisecondi (una volta sola)."""
+    global _advance_at
+    _advance_at = time.time() + ms / 1000.0
+
+
+def cancel_advance():
+    global _advance_at
+    _advance_at = None
+
+
+def check_advance_timer():
+    """Da chiamare a ogni fotogramma: invia ADVANCE_EVENT se e' scaduto."""
+    global _advance_at
+    if _advance_at is not None and time.time() >= _advance_at:
+        _advance_at = None
+        pygame.event.post(pygame.event.Event(ADVANCE_EVENT))
+
 # =====================================================================
 # FONT: Source Sans Pro (con fallback automatico al font di pygame)
 # =====================================================================
@@ -1105,7 +1129,7 @@ def handle_level1_click(pos):
             _mark_feedback_start()
             if l1_group["images"][i]["stem"].lower() != l1_group["intruder"]:
                 level1_wrong += 1
-            pygame.time.set_timer(ADVANCE_EVENT, L1_FEEDBACK_MS, loops=1)
+            schedule_advance(L1_FEEDBACK_MS)
             return
 
 
@@ -1281,7 +1305,7 @@ def handle_level2_mouseup(pos):
         if l2_matched == len(l2_items):
             l2_locked = True
             _mark_feedback_start()
-            pygame.time.set_timer(ADVANCE_EVENT, L2_FEEDBACK_MS, loops=1)
+            schedule_advance(L2_FEEDBACK_MS)
     else:
         level2_wrong += 1
         it["rect"] = it["home_rect"].copy()
@@ -1366,7 +1390,7 @@ def handle_level3_click(pos):
             _mark_feedback_start()
             if i != q["_correct_display_idx"]:
                 level3_wrong += 1
-            pygame.time.set_timer(ADVANCE_EVENT, L3_FEEDBACK_MS, loops=1)
+            schedule_advance(L3_FEEDBACK_MS)
             return
 
 
@@ -1399,7 +1423,7 @@ def skip_available():
 def skip_current_level():
     global level1_time, level2_time, level3_time
     global level1_wrong, level2_wrong, level3_wrong, dragging_item
-    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    cancel_advance()
     if dragging_item is not None:
         dragging_item["dragging"] = False
         dragging_item = None
@@ -1489,7 +1513,7 @@ def go_to_prev_question():
     global l1_pos, l2_pos, quiz_index, quiz_answered, quiz_selected
     if not prev_question_available():
         return
-    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    cancel_advance()
     if STATE == "L1_PLAY":
         l1_pos -= 1
         load_l1_group()
@@ -1507,7 +1531,7 @@ def go_to_next_question():
     global l1_pos, l2_pos, quiz_index, quiz_answered, quiz_selected
     if not next_question_available():
         return
-    pygame.time.set_timer(ADVANCE_EVENT, 0)
+    cancel_advance()
     if STATE == "L1_PLAY":
         l1_pos += 1
         load_l1_group()
@@ -1797,6 +1821,7 @@ async def main():
     running = True
 
     while running:
+        check_advance_timer()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
