@@ -208,3 +208,4 @@ Questo gioco è nato dalla collaborazione tra tre ragazzi del CNR-IRBIM della se
 * Pamela Lattanzi (pamela.lattanzi@irbim.cnr.it)
 * Deborah D'Angelo (deborah.dangelo@irbim.cnr.it)
 * Kevin De Simone (kevin.desimone@irbim.cnr.it)
+* Emma Ventura (emmaventura@cnr.it)
